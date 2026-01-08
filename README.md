@@ -28,7 +28,8 @@ Then, plug the Jetson Nano back in, wait 30 seconds, and the device should autom
 
 ## Acknowledgements & Contact
 If you would like to use any part of this program, please cite our publication here: 
-```@inproceedings{10.1145/3686215.3686216,
+```
+@inproceedings{10.1145/3686215.3686216,
   author = {Beery, Aidan J. and Eastman, Daniel W. and Enos, Jake and Richards, William and Donnelly, Patrick J.},
   title = {Smart Compost Bin for Measurement of Consumer Food Waste},
   year = {2024},
