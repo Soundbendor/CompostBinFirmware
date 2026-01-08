@@ -45,7 +45,10 @@ If you would like to use any part of this program, please cite our publication h
   series = {ICMI '24 Companion}
 }
 ```
-Lead Developer: Will Richards (@WL-Richards)
-Project Lead: Aidan Beery (@Aidan-B1409)
-Advised By: Dr. Patrick J. Donnelly
+Lead Developer: Will Richards [(@WL-Richards)](https://github.com/WL-Richards)
+
+Project Lead: Aidan Beery [(@Aidan-B1409)](https://github.com/Aidan-B1409)
+
+Advised By: Dr. Patrick J. Donnelly @ Oregon State University
+
 Website: http://www.soundbendor.org/
