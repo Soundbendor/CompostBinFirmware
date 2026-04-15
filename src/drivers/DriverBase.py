@@ -19,7 +19,10 @@ class DriverBase:
         # The rate at which the thread this driver is running in will loop
         self.loopTime = 0.001
         self.initialized = False
-    
+
+        # Flag for testing mode. Allows driver to be used without DriverManager
+        self.testing = False
+
     """
     Should be overloaded on all sub drivers so initialize can be called on all drivers at once
     """
@@ -48,7 +51,10 @@ class DriverBase:
     Get a specific event from the dictionary
     """
     def getEvent(self, event) -> Event:
-         return self.events[event][0]
+        if not self.testing:
+            return self.events[event][0]
+        else: 
+            return self.events[event]
 
     """
     What to do when execution is ending
