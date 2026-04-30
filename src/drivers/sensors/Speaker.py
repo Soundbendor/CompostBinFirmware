@@ -20,7 +20,7 @@ class Speaker():
 
         # Audio playback parameters
         self.device_index = 0
-        self.channels = 2
+        self.channels = 1
         self.frames_per_buffer = 1024
         self.pAudio = pyaudio.PyAudio()
         self.initialized = True
