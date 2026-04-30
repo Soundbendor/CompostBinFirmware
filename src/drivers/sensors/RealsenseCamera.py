@@ -20,7 +20,7 @@ class RealsenseCam(DriverBase):
     Construct a new instance of the camera
     """
 
-    def __init__(self, controllerPipe, width=640, height=480, fps=30):
+    def __init__(self, controllerPipe, width=1280, height=720, fps=30):
         super().__init__("Realsense")
 
         # Set loop time to be 0 because it will block automatically
@@ -36,6 +36,21 @@ class RealsenseCam(DriverBase):
         self.realsense_pointcloud = rs.pointcloud()
         self.realsense_align = rs.align(rs.stream.color)
         self.controllerConnection = controllerPipe
+
+        # Post-processing filters for high-quality depth
+        self.decimation = rs.decimation_filter()
+        self.decimation.set_option(rs.option.filter_magnitude, 2)
+        
+        self.spatial = rs.spatial_filter()
+        self.spatial.set_option(rs.option.filter_magnitude, 2)
+        self.spatial.set_option(rs.option.filter_smooth_alpha, 0.5)
+        self.spatial.set_option(rs.option.filter_smooth_delta, 20)
+        
+        self.temporal = rs.temporal_filter()
+        self.hole_filling = rs.hole_filling_filter()
+        
+        self.depth_to_disparity = rs.disparity_transform(True)
+        self.disparity_to_depth = rs.disparity_transform(False)
 
         # for dev in rs.context().query_devices():
         #     dev.hardware_reset()
@@ -67,6 +82,11 @@ class RealsenseCam(DriverBase):
             self.realsense_profile = self.realsense_pipeline.start(
                 self.realsense_config
             )
+
+            # Set visual preset to 'High Accuracy' (3) for best quality topology maps
+            depth_sensor = self.realsense_profile.get_device().first_depth_sensor()
+            if depth_sensor.supports(rs.option.visual_preset):
+                depth_sensor.set_option(rs.option.visual_preset, 3)
 
             # print(self.realsense_profile.get_device().query_sensors()[0].get_option_range(rs.option.exposure))
             # for option in self.realsense_profile.get_device().query_sensors()[0].get_supported_options():
@@ -122,6 +142,22 @@ class RealsenseCam(DriverBase):
                 color_frame = aligned_frames.get_color_frame()
 
                 if depth_frame and color_frame:
+                    # Apply post-processing filters to improve depth quality
+                    # 1. Decimation
+                    filtered = self.decimation.process(depth_frame)
+                    # 2. Transform to disparity space
+                    filtered = self.depth_to_disparity.process(filtered)
+                    # 3. Spatial smoothing
+                    filtered = self.spatial.process(filtered)
+                    # 4. Temporal smoothing
+                    filtered = self.temporal.process(filtered)
+                    # 5. Transform back to depth space
+                    filtered = self.disparity_to_depth.process(filtered)
+                    # 6. Fill holes
+                    filtered = self.hole_filling.process(filtered)
+                    
+                    depth_frame = filtered.as_depth_frame()
+
                     # Create the names for each of the files that will be saved
                     currentTime = time()
                     fileNames = {
