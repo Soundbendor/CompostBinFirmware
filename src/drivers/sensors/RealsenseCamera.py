@@ -151,7 +151,7 @@ class RealsenseCam(DriverBase):
                     
                     # Capture set of frames to use in temporal smoothing
                     for i in range(10):
-                        frameset = self.realsense_pipeline.try_wait_for_frames()
+                        frameset = self.realsense_pipeline.wait_for_frames()
                         frames.append(frameset.get_depth_frame())
 
 
