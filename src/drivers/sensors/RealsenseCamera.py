@@ -146,17 +146,17 @@ class RealsenseCam(DriverBase):
                 color_frame = aligned_frames.get_color_frame()
 
                 if depth_frame and color_frame:
-                    frames = []
+                    buffer_frames = []
                     # WARN: Breaking alignment here
                     
                     # Capture set of frames to use in temporal smoothing
                     for i in range(10):
                         frameset = self.realsense_pipeline.wait_for_frames()
-                        frames.append(frameset.get_depth_frame())
+                        buffer_frames.append(frameset.get_depth_frame())
 
 
                     # Apply post-processing filters to improve depth quality
-                    for frame in frames:
+                    for frame in buffer_frames:
                         # 1. Decimation
                         filtered = self.decimation.process(frame)
                         # 2. Transform to disparity space
