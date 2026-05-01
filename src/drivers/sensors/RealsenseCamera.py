@@ -160,13 +160,13 @@ class RealsenseCam(DriverBase):
                         # 1. Decimation
                         filtered = self.decimation.process(frame)
                         # 2. Transform to disparity space
-                        filtered = self.depth_to_disparity.process(filtered)
+                        # filtered = self.depth_to_disparity.process(filtered)
                         # 3. Spatial smoothing
                         filtered = self.spatial.process(filtered)
                         # 4. Temporal smoothing
                         filtered = self.temporal.process(filtered)
                         # 5. Transform back to depth space
-                        filtered = self.disparity_to_depth.process(filtered)
+                        # filtered = self.disparity_to_depth.process(filtered)
                         # 6. Fill holes
                         filtered = self.hole_filling.process(filtered)
                         
