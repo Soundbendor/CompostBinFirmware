@@ -131,7 +131,7 @@ class RealsenseCam(DriverBase):
 
             # skip the first 5 frames, allow for auto-exposure
             for x in range(5):
-                pipe.try_wait_for_frames()
+                self.realsense_pipeline.try_wait_for_frames()
             
             # Attempt to retrive the most recent frame from the realsense camera
             capSuccsess, frames = self.realsense_pipeline.try_wait_for_frames()
