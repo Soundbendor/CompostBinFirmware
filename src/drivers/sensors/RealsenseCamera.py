@@ -130,7 +130,7 @@ class RealsenseCam(DriverBase):
                 return
 
             # skip the first 5 frames, allow for auto-exposure
-            for x in range(5):
+            for i in range(5):
                 self.realsense_pipeline.try_wait_for_frames()
             
             # Attempt to retrive the most recent frame from the realsense camera
@@ -146,20 +146,30 @@ class RealsenseCam(DriverBase):
                 color_frame = aligned_frames.get_color_frame()
 
                 if depth_frame and color_frame:
-                    # Apply post-processing filters to improve depth quality
-                    # 1. Decimation
-                    filtered = self.decimation.process(depth_frame)
-                    # 2. Transform to disparity space
-                    filtered = self.depth_to_disparity.process(filtered)
-                    # 3. Spatial smoothing
-                    filtered = self.spatial.process(filtered)
-                    # 4. Temporal smoothing
-                    filtered = self.temporal.process(filtered)
-                    # 5. Transform back to depth space
-                    filtered = self.disparity_to_depth.process(filtered)
-                    # 6. Fill holes
-                    filtered = self.hole_filling.process(filtered)
+                    frames = []
+                    # WARN: Breaking alignment here
                     
+                    # Capture set of frames to use in temporal smoothing
+                    for i in range(10):
+                        frameset = self.realsense_pipeline.try_wait_for_frames()
+                        frames.append(frameset.get_depth_frame())
+
+
+                    # Apply post-processing filters to improve depth quality
+                    for frame in frames:
+                        # 1. Decimation
+                        filtered = self.decimation.process(frame)
+                        # 2. Transform to disparity space
+                        filtered = self.depth_to_disparity.process(filtered)
+                        # 3. Spatial smoothing
+                        filtered = self.spatial.process(filtered)
+                        # 4. Temporal smoothing
+                        filtered = self.temporal.process(filtered)
+                        # 5. Transform back to depth space
+                        filtered = self.disparity_to_depth.process(filtered)
+                        # 6. Fill holes
+                        filtered = self.hole_filling.process(filtered)
+                        
                     depth_frame = filtered.as_depth_frame()
 
                     # Create the names for each of the files that will be saved
