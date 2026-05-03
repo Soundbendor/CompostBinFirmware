@@ -35,13 +35,11 @@ class BME688(DriverBase):
         script_dir = os.path.abspath(os.path.dirname(__file__))
         lib_path = os.path.join(script_dir, "bsec_python.so")
         self.functions = cdll.LoadLibrary(lib_path)
+        self.functions.proccess_bme_data.argtypes = [c_int, c_float, c_float, c_float, c_float, POINTER(c_float)]
+        self.functions.proccess_bme_data.restype = c_int
 
-        # Set this proccess to loop once a second
-        self.setLoopTime(1)
-
-        # When the device is restarted we want to clear the last savedState
-        if(os.path.exists("savedState.dat")):
-            os.remove("savedState.dat")
+        # Set this proccess to loop once every 3 seconds to match BSEC Low Power mode
+        self.setLoopTime(3)
 
         self.startTime = time()
 

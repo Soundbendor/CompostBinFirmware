@@ -136,22 +136,25 @@ void state_save(const uint8_t *state_buffer, uint32_t length)
     fclose(fptr);
 }
 
-int proccess_bme_data(int ts, float temperature, float pressure, float humidity, float gas_resistance, float output[7]){
-    int16_t rslt;
-    return_values_init ret_bsec;
+static int bsec_initialized = 0;
 
-    /* Call to the function which initializes the BSEC library 
-     * Switch on low-power mode and provide no temperature offset */
-    ret_bsec = bsec_iot_init_backend(BSEC_SAMPLE_RATE_LP, 0.0f, state_load);
-    if (ret_bsec.bme680_status)
-    {
-        /* Could not intialize BME680 */
-        return (int)ret_bsec.bme680_status;
-    }
-    else if (ret_bsec.bsec_status)
-    {
-        /* Could not intialize BSEC library */
-        return (int)ret_bsec.bsec_status;
+int proccess_bme_data(int ts, float temperature, float pressure, float humidity, float gas_resistance, float output[7]){
+    if (!bsec_initialized) {
+        return_values_init ret_bsec;
+        /* Call to the function which initializes the BSEC library 
+         * Switch on low-power mode and provide no temperature offset */
+        ret_bsec = bsec_iot_init_backend(BSEC_SAMPLE_RATE_LP, 0.0f, state_load);
+        if (ret_bsec.bme680_status)
+        {
+            /* Could not intialize BME680 */
+            return (int)ret_bsec.bme680_status;
+        }
+        else if (ret_bsec.bsec_status)
+        {
+            /* Could not intialize BSEC library */
+            return (int)ret_bsec.bsec_status;
+        }
+        bsec_initialized = 1;
     }
 	
 
