@@ -24,12 +24,8 @@ RUN apt-get -y install wireless-tools
 # Install python dependenices
 RUN pip install -r requirements.txt --no-cache-dir --break-system-packages
 
-# Compile whisper
-COPY whisper.cpp /firmware/whisper.cpp
-WORKDIR /firmware/whisper.cpp
-RUN make
-RUN ./models/download-ggml-model.sh small.en
-WORKDIR /firmware
+# Pre-download faster-whisper model
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8')"
 
 RUN mv /firmware/dependencies/librealsense2.so /usr/local/lib/python3.9/site-packages/librealsense2.so
 RUN mv /firmware/dependencies/pyrealsense2.cpython-39-aarch64-linux-gnu.so /usr/local/lib/python3.9/site-packages/pyrealsense2.cpython-39-aarch64-linux-gnu.so
