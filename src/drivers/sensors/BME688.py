@@ -88,11 +88,19 @@ class BME688(DriverBase):
                 else:
                     logging.warning("Gas data was not ready to collect at this time the last value will be returned in place")
 
+                # BSEC expects pressure in Pa (Pascals). self.sensor.data.pressure is in hPa (hectopascals).
+                pressure_pa = self.sensor.data.pressure * 100.0
+
                 # Call our BSEC library to give us additional data
                 arr = [0, 0, 0, 0, 0, 0, 0]
                 arr_c = (c_float * 7)(*arr)
-                self.functions.proccess_bme_data(c_int(ts),c_float(self.sensor.data.temperature), c_float(self.sensor.data.pressure), c_float(self.sensor.data.humidity), c_float(self.sensor.data.gas_resistance), arr_c) 
+                ret = self.functions.proccess_bme_data(c_int(ts), c_float(self.sensor.data.temperature), c_float(pressure_pa), c_float(self.sensor.data.humidity), c_float(self.sensor.data.gas_resistance), arr_c) 
+                
+                if ret != 0:
+                    logging.error(f"BSEC proccess_bme_data returned error code: {ret}")
+
                 self.data["iaq"].value = arr_c[0]
+                self.data["iaq_accuracy"].value = arr_c[1]
                 self.data["sIAQ"].value = arr_c[4]
                 self.data["CO2-eq"].value = arr_c[5]
                 self.data["bVOC-eq"].value = arr_c[6]
@@ -111,6 +119,7 @@ class BME688(DriverBase):
             "humidity(%rh)": Value('d', 0.0),
             "gas_resistance(ohms)": Value('d', 0.0),
             "iaq": Value('d', 0.0),
+            "iaq_accuracy": Value('d', 0.0),
             "sIAQ": Value('d', 0.0),
             "CO2-eq": Value('d', 0.0),
             "bVOC-eq": Value('d', 0.0),
