@@ -66,3 +66,5 @@ dependencies = [
     "typing-extensions>=4.15.0",
 ]
 
+[tool.uv]    
+override-dependencies = ["smbus2==0.6.1"]
