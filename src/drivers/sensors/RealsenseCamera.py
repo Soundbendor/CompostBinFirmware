@@ -30,11 +30,11 @@ class RealsenseCam(DriverBase):
         self.camera_height = height
 
         # Realsense paramters
-        self.realsense_pipeline = rs.pipeline()
-        self.realsense_config = rs.config()
-        self.realsense_colorizer = rs.colorizer()
-        self.realsense_pointcloud = rs.pointcloud()
-        self.realsense_align = rs.align(rs.stream.color)
+        self.realsense_pipeline = None
+        self.realsense_config = None
+        self.realsense_colorizer = None
+        self.realsense_pointcloud = None
+        self.realsense_align = None
         self.controllerConnection = controllerPipe
 
         # for dev in rs.context().query_devices():
@@ -48,6 +48,12 @@ class RealsenseCam(DriverBase):
     """
 
     def initialize(self):
+        self.realsense_pipeline = rs.pipeline()
+        self.realsense_config = rs.config()
+        self.realsense_colorizer = rs.colorizer()
+        self.realsense_pointcloud = rs.pointcloud()
+        self.realsense_align = rs.align(rs.stream.color)
+
         self.realsense_config.enable_stream(
             rs.stream.color,
             self.camera_width,
