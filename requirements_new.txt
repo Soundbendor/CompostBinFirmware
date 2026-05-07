@@ -6,7 +6,7 @@
 #
 --extra-index-url https://www.piwheels.org/simple
 
-adafruit-blinka==9.1.0
+adafruit-blinka
     # via
     #   adafruit-circuitpython-busdevice
     #   adafruit-circuitpython-connectionmanager
@@ -14,83 +14,83 @@ adafruit-blinka==9.1.0
     #   adafruit-circuitpython-pixelbuf
     #   adafruit-circuitpython-requests
     #   adafruit-circuitpython-typing
-adafruit-circuitpython-busdevice==5.2.17
+adafruit-circuitpython-busdevice
     # via
     #   adafruit-circuitpython-neopixel-spi
     #   adafruit-circuitpython-typing
-adafruit-circuitpython-connectionmanager==3.1.8
+adafruit-circuitpython-connectionmanager
     # via adafruit-circuitpython-requests
-adafruit-circuitpython-neopixel-spi==1.0.16
+adafruit-circuitpython-neopixel-spi
     # via -r requirements.txt
-adafruit-circuitpython-pixelbuf==2.0.12
+adafruit-circuitpython-pixelbuf
     # via adafruit-circuitpython-neopixel-spi
-adafruit-circuitpython-requests==4.1.17
+adafruit-circuitpython-requests
     # via adafruit-circuitpython-typing
-adafruit-circuitpython-typing==1.12.3
+adafruit-circuitpython-typing
     # via
     #   adafruit-blinka
     #   adafruit-circuitpython-busdevice
-adafruit-platformdetect==3.88.0
+adafruit-platformdetect
     # via adafruit-blinka
-adafruit-pureio==1.1.11
+adafruit-pureio
     # via adafruit-blinka
-anyio==4.13.0
+anyio
     # via httpx
-bluez-peripheral==0.1.7
+bluez-peripheral
     # via -r requirements.txt
-bme680==2.0.0
+bme680
     # via -r requirements.txt
-certifi==2026.4.22
+certifi
     # via
     #   httpcore
     #   httpx
-cmapy==0.6.6
+cmapy
     # via -r requirements.txt
-contourpy==1.3.3
+contourpy
     # via matplotlib
-cycler==0.12.1
+cycler
     # via matplotlib
-dbus-next==0.2.3
+dbus-next
     # via bluez-peripheral
-filelock==3.29.0
+filelock
     # via torch
-fonttools==4.62.1
+fonttools
     # via matplotlib
-fsspec==2026.4.0
+fsspec
     # via torch
-gpiod==2.4.2
+gpiod
     # via -r requirements.txt
-h11==0.16.0
+h11
     # via httpcore
-httpcore==1.0.9
+httpcore
     # via httpx
-httpx==0.28.1
+httpx
     # via -r requirements.txt
-idna==3.13
+idna
     # via
     #   anyio
     #   httpx
-jinja2==3.1.6
+jinja2
     # via torch
-kiwisolver==1.5.0
+kiwisolver
     # via matplotlib
-markupsafe==3.0.3
+markupsafe
     # via jinja2
-matplotlib==3.10.9
+matplotlib
     # via
     #   -r requirements.txt
     #   cmapy
-mlx90640-driver==1.1.2
+mlx90640-driver
     # via
     #   -r requirements.txt
     #   mlx90640-driver-devicetree
-mlx90640-driver-devicetree==1.1.0
+mlx90640-driver-devicetree
     # via -r requirements.txt
-mpmath==1.4.1
+mpmath
     # via sympy
-networkx==3.6.1
+networkx
     # via torch
-numpy==2.4.4
+numpy
     # via
     #   -r requirements.txt
     #   cmapy
@@ -98,58 +98,56 @@ numpy==2.4.4
     #   matplotlib
     #   opencv-python
     #   scipy
-opencv-python==4.13.0.92
+opencv-python
     # via cmapy
-packaging==26.2
+packaging
     # via matplotlib
-pillow==12.2.0
+pillow
     # via matplotlib
-pyaudio==0.2.14
+pyaudio
     # via -r requirements.txt
-pydub==0.25.1
+pydub
     # via -r requirements.txt
-pyftdi==0.57.1
+pyftdi
     # via adafruit-blinka
-pynau7802==0.2.2
+pynau7802
     # via -r requirements.txt
-pyparsing==3.3.2
+pyparsing
     # via matplotlib
-pyserial==3.5
+pyserial
     # via pyftdi
-python-dateutil==2.9.0.post0
+python-dateutil
     # via matplotlib
-pyrealsense2~=2.57
-    # via -r requirements.txt
-pyusb==1.3.1
+pyusb
     # via pyftdi
-rpi-gpio==0.7.1
+rpi-gpio
     # via adafruit-blinka
-rpi-ws281x==5.0.0
+rpi-ws281x
     # via adafruit-blinka
-scipy==1.17.1
+scipy
     # via -r requirements.txt
 setuptools==81.0.0
-six==1.17.0
+six
     # via python-dateutil
-smbus==1.1.post2
+smbus
     # via bme680
-smbus2>=0.4.2,<0.5.0
+smbus2>=0.6.0
     # via pynau7802
-sniffio==1.3.1
+sniffio
     # via
     #   anyio
     #   httpx
-sympy==1.14.0
+sympy
     # via torch
-sysv-ipc==1.2.0
+sysv-ipc
     # via adafruit-blinka
-torch==2.11.0
+torch
     # via torchaudio
-torchaudio==2.11.0
+torchaudio
     # via -r requirements.txt
-typing-extensions==4.15.0
+typing-extensions
     # via
     #   adafruit-circuitpython-typing
     #   torch
-boto3==1.43.2
-aws_secretsmanager_caching==1.1.3
+boto3
+aws_secretsmanager_caching

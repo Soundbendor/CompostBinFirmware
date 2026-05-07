@@ -68,3 +68,6 @@ dependencies = [
 
 [tool.uv]    
 override-dependencies = ["smbus2==0.6.1"]
+
+# [tool.setuptools.package-data]
+# pyrealsense2 = ["dependencies/realsense/*.so"]
