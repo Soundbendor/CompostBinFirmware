@@ -25,16 +25,10 @@ class BME688(DriverBase):
     def __init__(self, i2c_address = 0x77):
         super().__init__("BME688")
 
+        self.i2c_address = i2c_address
+        self.sensor = None
+        self.functions = None
         self.failedToInit = False
-        try:
-            self.sensor = bme680.BME680(i2c_address)
-        except RuntimeError as e:
-            logging.error(f"An error occured intializing BME680: {e}")
-            self.failedToInit = True
-
-        script_dir = os.path.abspath(os.path.dirname(__file__))
-        lib_path = os.path.join(script_dir, "bsec_python.so")
-        self.functions = cdll.LoadLibrary(lib_path)
 
         # Set this proccess to loop once a second
         self.setLoopTime(1)
@@ -50,6 +44,16 @@ class BME688(DriverBase):
     Initialize the BME688 to begin taking sensor readings
     """
     def initialize(self):
+        try:
+            self.sensor = bme680.BME680(self.i2c_address)
+        except RuntimeError as e:
+            logging.error(f"An error occured intializing BME680: {e}")
+            self.failedToInit = True
+
+        script_dir = os.path.abspath(os.path.dirname(__file__))
+        lib_path = os.path.join(script_dir, "bsec_python.so")
+        self.functions = cdll.LoadLibrary(lib_path)
+
         if not self.failedToInit:
             # Set oversampling amounts
             self.sensor.set_humidity_oversample(bme680.OS_2X)
@@ -77,6 +81,9 @@ class BME688(DriverBase):
     Measure and store the readigns from the BME688 passing the gas resistance values through the Bosch BSEC library to compute equivelent CO2 and bVOC
     """
     def measure(self):
+        if self.sensor is None or self.failedToInit:
+            return
+
         try:
             if(self.sensor.get_sensor_data()):
                 ts = int(time()-self.startTime)
@@ -124,5 +131,6 @@ class BME688(DriverBase):
     Shutdown the proccess
     """
     def kill(self):
-        self.sensor._i2c.close()
+        if self.sensor:
+            self.sensor._i2c.close()
         

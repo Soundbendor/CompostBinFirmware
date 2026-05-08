@@ -153,7 +153,7 @@ class MLX90640(DriverBase):
     def __init__(self, controllerPipe):
         super().__init__("MLX90640")
         self.controllerConnection = controllerPipe
-        self.mlx = ThermalCam()
+        self.mlx = None
         self.events = {
             "CAPTURE": Event()
         }
@@ -162,6 +162,7 @@ class MLX90640(DriverBase):
     Initialzize a new instance of our "thermal camera"
     """
     def initialize(self):
+        self.mlx = ThermalCam()
         logging.info("Succsessfully initialized!")
         self.data["initialized"].value = 1
     
@@ -169,6 +170,9 @@ class MLX90640(DriverBase):
     If a measurement is requested in the form of the CAPTURE event then capture a new image from the camera
     """
     def measure(self) -> None:
+        if self.mlx is None:
+            return
+            
         if(self.getEvent("CAPTURE").is_set()):
             fileName = self.mlx.capture()
             self.controllerConnection.send({'heatmapImage': fileName})
@@ -178,7 +182,8 @@ class MLX90640(DriverBase):
     Clean up hardware for shutdown
     """
     def kill(self):
-        self.mlx.close()
+        if self.mlx:
+            self.mlx.close()
 
 
         

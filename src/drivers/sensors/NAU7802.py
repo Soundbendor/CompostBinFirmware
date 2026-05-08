@@ -22,7 +22,7 @@ class NAU7802(DriverBase):
     def __init__(self, calibration_factor = 0):
         super().__init__("NAU7802")
 
-        self.nau = PyNAU7802.NAU7802()
+        self.nau = None
         self.collectedData = 0
         
         if(calibration_factor == 0):
@@ -48,6 +48,7 @@ class NAU7802(DriverBase):
     Initialize the NAU7802 to begin taking sensor readings, DOES NOT TARE
     """
     def initialize(self):
+        self.nau = PyNAU7802.NAU7802()
         i2cBus = smbus2.SMBus(1)
         if self.nau.begin(i2cBus):
             logging.info("Connected to NAU7802!")
@@ -69,6 +70,9 @@ class NAU7802(DriverBase):
     Measure and return the weight read from the load cell
     """
     def measure(self):
+        if self.nau is None:
+            return
+
         if self.getEvent("CALIBRATE").is_set():
             self.calibrate()
             self.getEvent("CALIBRATE").clear()

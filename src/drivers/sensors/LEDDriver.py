@@ -38,11 +38,8 @@ class LEDDriver(DriverBase):
     def __init__(self, isBootFromUpdate, pixel_count = 16):
         super().__init__("LEDDriver")
 
-        spi = board.SPI()
-        self.pixels = neopixel.NeoPixel_SPI(
-            spi, pixel_count, brightness=1, auto_write=True, pixel_order=neopixel.GRBW, bit0=0b10000000
-        )   
-
+        self.pixel_count = pixel_count
+        self.pixels = None
         self.mode = LEDMode.PROCESSING if not isBootFromUpdate else LEDMode.NONE
         self.initialized = False
         self.events = {
@@ -59,6 +56,10 @@ class LEDDriver(DriverBase):
     This doesn't do anything other than tell us the driver has been initialized succsessfully
     """
     def initialize(self):
+        spi = board.SPI()
+        self.pixels = neopixel.NeoPixel_SPI(
+            spi, self.pixel_count, brightness=1, auto_write=True, pixel_order=neopixel.GRBW, bit0=0b10000000
+        )   
         # Set the GPIO numbering to that of the board itself and then set the specified GPIO pin as an input
         logging.info("Succsessfully configured LED Driver!")
         self.data["initialized"].value = 1
@@ -67,6 +68,9 @@ class LEDDriver(DriverBase):
     Updates the LED's based on the given device mode
     """
     def measure(self):
+        if self.pixels is None:
+            return
+
         self.handleEvents()
 
         if(self.mode == LEDMode.CAMERA):
@@ -146,7 +150,8 @@ class LEDDriver(DriverBase):
         self.pixels.fill((255,0,0,0))
 
     def kill(self):
-        self.pixels.fill((0,0,0,0))
-        self.pixels.show()
+        if self.pixels:
+            self.pixels.fill((0,0,0,0))
+            self.pixels.show()
 
    
