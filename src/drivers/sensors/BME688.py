@@ -4,12 +4,12 @@ Will Richards, Oregon State University, 2023
 Abstraction layer for the BME688 gas sensor
 """
 
-import bme680
+import board
+import adafruit_bme680
 
 import logging
 from time import  time
 import os
-from ctypes import *
 
 
 from drivers.DriverBase import DriverBase
@@ -27,7 +27,6 @@ class BME688(DriverBase):
 
         self.i2c_address = i2c_address
         self.sensor = None
-        self.functions = None
         self.failedToInit = False
 
         # Set this proccess to loop once a second
@@ -45,66 +44,55 @@ class BME688(DriverBase):
     """
     def initialize(self):
         try:
-            self.sensor = bme680.BME680(self.i2c_address)
-        except RuntimeError as e:
-            logging.error(f"An error occured intializing BME680: {e}")
-            self.failedToInit = True
-
-        script_dir = os.path.abspath(os.path.dirname(__file__))
-        lib_path = os.path.join(script_dir, "bsec_python.so")
-        self.functions = cdll.LoadLibrary(lib_path)
-
-        if not self.failedToInit:
+            i2c = board.I2C()
+            self.sensor = adafruit_bme680.Adafruit_BME680_I2C(i2c, address=self.i2c_address)
+            
             # Set oversampling amounts
-            self.sensor.set_humidity_oversample(bme680.OS_2X)
-            self.sensor.set_pressure_oversample(bme680.OS_4X)
-            self.sensor.set_temperature_oversample(bme680.OS_8X)
-
-            # Set IIR Filter size and whether or not we should be measuring gas
-            self.sensor.set_filter(bme680.FILTER_SIZE_3)
-            self.sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
-
-            # Set heater temperature and duration and finally select the profile
-            self.sensor.set_gas_heater_temperature(320)
-            self.sensor.set_gas_heater_duration(150)
-            self.sensor.select_gas_heater_profile(0)
+            self.sensor.temperature_oversample = 8
+            self.sensor.humidity_oversample = 2
+            self.sensor.pressure_oversample = 4
+            
+            # Set IIR Filter size
+            self.sensor.filter_size = 3
+            
+            # Set heater temperature and duration
+            self.sensor.set_gas_heater(320, 150)
+            
             logging.info("Initialization complete!")
             self.initialized = True
             self.data["initialized"].value = 1
-        else:
-            logging.error("Failed to initialize sensor!")
+        except Exception as e:
+            logging.error(f"An error occured intializing BME680: {e}")
+            self.failedToInit = True
             self.initialized = False
             self.data["initialized"].value = 0
        
 
     """
-    Measure and store the readigns from the BME688 passing the gas resistance values through the Bosch BSEC library to compute equivelent CO2 and bVOC
+    Measure and store the readings from the BME688.
+    Note: IAQ, sIAQ, CO2-eq, and bVOC-eq are no longer calculated as BSEC has been removed.
     """
     def measure(self):
         if self.sensor is None or self.failedToInit:
             return
 
         try:
-            if(self.sensor.get_sensor_data()):
-                ts = int(time()-self.startTime)
-                self.data["temperature(c)"].value = self.sensor.data.temperature
-                self.data["pressure(kpa)"].value = self.sensor.data.pressure * 0.1  # Convert hectopascals to kilopascals
-                self.data["humidity(%rh)"].value = self.sensor.data.humidity
+            self.data["temperature(c)"].value = self.sensor.temperature
+            self.data["pressure(kpa)"].value = self.sensor.pressure * 0.1  # Convert hPa to kPa
+            self.data["humidity(%rh)"].value = self.sensor.relative_humidity
 
-                # Only measure the gas if the measurement is ready
-                if(self.sensor.data.heat_stable):
-                    self.data["gas_resistance(ohms)"].value = self.sensor.data.gas_resistance
-                else:
-                    logging.warning("Gas data was not ready to collect at this time the last value will be returned in place")
+            # Measure gas resistance
+            gas_res = self.sensor.gas
+            if gas_res is not None:
+                self.data["gas_resistance(ohms)"].value = gas_res
+            else:
+                logging.warning("Gas data was not ready to collect at this time")
 
-                # Call our BSEC library to give us additional data
-                arr = [0, 0, 0, 0, 0, 0, 0]
-                arr_c = (c_float * 7)(*arr)
-                self.functions.proccess_bme_data(c_int(ts),c_float(self.sensor.data.temperature), c_float(self.sensor.data.pressure), c_float(self.sensor.data.humidity), c_float(self.sensor.data.gas_resistance), arr_c) 
-                self.data["iaq"].value = arr_c[0]
-                self.data["sIAQ"].value = arr_c[4]
-                self.data["CO2-eq"].value = arr_c[5]
-                self.data["bVOC-eq"].value = arr_c[6]
+            # BSEC metrics are no longer available
+            self.data["iaq"].value = 0.0
+            self.data["sIAQ"].value = 0.0
+            self.data["CO2-eq"].value = 0.0
+            self.data["bVOC-eq"].value = 0.0
                 
         except Exception as e:
             logging.error(f"The following error occured while attempting to read data: {e}")
@@ -128,9 +116,8 @@ class BME688(DriverBase):
         return self.data
     
     """
-    Shutdown the proccess
+    Shutdown the process
     """
     def kill(self):
-        if self.sensor:
-            self.sensor._i2c.close()
-        
+        self.sensor = None
+
