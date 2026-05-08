@@ -277,16 +277,16 @@ class MLX90640(DriverBase):
     Map MLX raw sensor reading to colorized values
     """
 
-    def map_color(self, frame: np.ndarray) -> np.ndarray:
-        map_value = np.vectorize(
-            lambda x: self.map_value(
-                x, self.MIN_TEMP, self.MAX_TEMP, 0, self.COLORDEPTH - 1
-            )
+    def map_color(self, frame: np.ndarray) -> list:
+        # Map temperatures to 0-999 range
+        color_indices = (
+            (frame - self.MIN_TEMP) * (self.COLORDEPTH - 1) / (self.MAX_TEMP - self.MIN_TEMP)
         )
-        constrain = np.vectorize(lambda x: self.constrain(x, 0, self.COLORDEPTH - 1))
-        coloridx = map_value(frame)
-        coloridx = constrain(frame)
-        return coloridx.astype(int).reshape((24, 32))
+        # Constrain to valid colormap range and convert to int
+        color_indices = np.clip(color_indices, 0, self.COLORDEPTH - 1).astype(int)
+        
+        # Map indices to RGB tuples from self.colormap
+        return [self.colormap[idx] for idx in color_indices]
 
     """
     Generate colormap used by map_color
