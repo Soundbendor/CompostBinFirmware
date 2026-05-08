@@ -261,7 +261,9 @@ class MLX90640(DriverBase):
         img = Image.new("RGB", (32, 24))
         frame = self.map_color(frame)
         img.putdata(frame)
-        img = img.resize((32 * self.INTERPOLATE, 24 * self.INTERPOLATE), Image.BICUBIC)
+        img = img.resize(
+            (32 * self.INTERPOLATE_FACTOR, 24 * self.INTERPOLATE_FACTOR), Image.BICUBIC
+        )
         return img
 
     """
