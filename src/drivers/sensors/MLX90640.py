@@ -283,7 +283,7 @@ class MLX90640(DriverBase):
                 x, self.MIN_TEMP, self.MAX_TEMP, 0, self.COLORDEPTH - 1
             )
         )
-        constrain = np.vectorize(lambda x: constrain(x, 0, self.COLORDEPTH - 1))
+        constrain = np.vectorize(lambda x: self.constrain(x, 0, self.COLORDEPTH - 1))
         coloridx = map_value(frame)
         coloridx = constrain(frame)
         return coloridx.astype(int).reshape((24, 32))
