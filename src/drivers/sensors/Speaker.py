@@ -42,7 +42,7 @@ class Speaker():
                 output = True,
                 output_device_index=self.device_index)
         except Exception as e:
-            logging.error("Failed to open audio input device: {e}")
+            logging.error(f"Failed to open audio input device: {e}")
             self.initialized = False
 
         # Only if the device succsessfully initialized should we actually attempt to write to it
