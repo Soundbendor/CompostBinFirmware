@@ -76,4 +76,6 @@ COPY .aws /root/.aws
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
 
+ENV PATH="/firmware/.venv/bin:$PATH"
+
 WORKDIR  /firmware/src
