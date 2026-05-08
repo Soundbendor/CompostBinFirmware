@@ -201,9 +201,12 @@ class MLX90640(DriverBase):
     def __init__(self, controllerPipe):
         super().__init__("MLX90640")
         self.controllerConnection = controllerPipe
-        self.MIN_TEMP = 20.0
+        self.MIN_TEMP = 10.0
         self.MAX_TEMP = 50.0
         self.COLORDEPTH = 1000
+        # Constant factor by which we scale the thermal image
+        # In this case, take (32, 24) and scale to (800, 600)
+        self.INTERPOLATE_FACTOR = 25
         self.mlx = None
         self.i2c = None
         self.colormap = self._generate_cmap()
@@ -258,6 +261,7 @@ class MLX90640(DriverBase):
         img = Image.new("RGB", (32, 24))
         frame = self.map_color(frame)
         img.putdata(frame)
+        img = img.resize((32 * self.INTERPOLATE, 24 * self.INTERPOLATE), Image.BICUBIC)
         return img
 
     """
@@ -280,11 +284,13 @@ class MLX90640(DriverBase):
     def map_color(self, frame: np.ndarray) -> list:
         # Map temperatures to 0-999 range
         color_indices = (
-            (frame - self.MIN_TEMP) * (self.COLORDEPTH - 1) / (self.MAX_TEMP - self.MIN_TEMP)
+            (frame - self.MIN_TEMP)
+            * (self.COLORDEPTH - 1)
+            / (self.MAX_TEMP - self.MIN_TEMP)
         )
         # Constrain to valid colormap range and convert to int
         color_indices = np.clip(color_indices, 0, self.COLORDEPTH - 1).astype(int)
-        
+
         # Map indices to RGB tuples from self.colormap
         return [self.colormap[idx] for idx in color_indices]
 
