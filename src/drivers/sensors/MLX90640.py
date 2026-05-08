@@ -259,6 +259,9 @@ class MLX90640(DriverBase):
 
     def frame_to_image(self, frame: np.ndarray) -> Image:
         img = Image.new("RGB", (32, 24))
+        # experimental: min-max based on sensor reading
+        self.MIN_TEMP = np.min(frame)
+        self.MAX_TEMP = np.max(frame)
         frame = self.map_color(frame)
         img.putdata(frame)
         img = img.resize(
