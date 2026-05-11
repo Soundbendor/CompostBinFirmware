@@ -129,7 +129,7 @@ class AsyncPublisher(DriverBase):
                     # We failed to upload so we want to flash red on and offf
                     if (
                         "LEDDriver" in self.data
-                        and self.data["LEDDriver"]["data"]["initialized"] == 1
+                        and self.data["LEDDriver"]["data"]["initialized"].value == 1
                         and not self.data["LEDDriver"]["events"]["CAMERA"][0].is_set()
                     ):
                         # If we succsessffully published we want to flash green and then off again
