@@ -32,6 +32,8 @@ class BME688(DriverBase):
         self.parallel_mode = bme_cnst.BME68X_PARALLEL_MODE
         self.temp_prof = [320, 100, 100, 100, 200, 200, 200, 320, 320, 320]
         self.dur_prof = [5, 2, 10, 30, 5, 5, 5, 5, 5, 5]
+        # TODO: Determine
+        self.calibration_file = "conf/bme688_state.txt"
 
         # Set this process to loop once a second
         self.setLoopTime(1)
@@ -138,7 +140,7 @@ class BME688(DriverBase):
     This calibration curve should be generated during bin calibration
     """
 
-    def _readState(self, state_file_name) -> list[int] | None:
+    def _readState(self, state_file_name: str) -> list[int] | None:
         state_path = str(
             Path(__file__).resolve().parent.joinpath("conf", state_file_name)
         )
