@@ -58,6 +58,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # hotfix patch - keep lgpio 
 RUN uv pip install rpi-lgpio 
 
+# Compile BSEC library
+COPY bme68x-python-library-bsec2.6.1.0 /firmware/bme68x-python-library-bsec2.6.1.0
+WORKDIR /firmware/bme68x-python-library-bsec2.6.1.0
+RUN BSEC2=64; export BSEC2; /firmware/.venv/bin/python3 setup.py install
+WORKDIR /firmware
+
 # Compile whisper
 COPY whisper.cpp /firmware/whisper.cpp
 WORKDIR /firmware/whisper.cpp

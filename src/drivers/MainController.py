@@ -66,7 +66,7 @@ class MainController:
         self.manager = DriverManager(
             LEDDriver(self.isBootFromUpdate),
             NAU7802(calibration.get("NAU7802_CALIBRATION_FACTOR")),
-            # BME688(),
+            BME688(),
             MLX90640(mlxControllerConenction),
             LidSwitch(),
             RealsenseCam(realsenseControllerConenction),
