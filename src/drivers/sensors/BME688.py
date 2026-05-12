@@ -141,11 +141,10 @@ class BME688(DriverBase):
     """
 
     def _readState(self, state_file_name: str) -> list[int] | None:
-        state_path = str(
-            Path(__file__).resolve().parent.joinpath("conf", state_file_name)
-        )
+        state_path = Path(__file__).resolve().parent.joinpath("conf", state_file_name)
+
         if state_path.is_file():
-            state_file = open(state_path, "r")
+            state_file = open(str(state_path), "r")
             # strip the brackets [.....]
             state_str = state_file.read()[1:-1]
             # split on delimiter ,
