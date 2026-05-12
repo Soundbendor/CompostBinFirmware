@@ -53,10 +53,11 @@ class BME688(DriverBase):
             state_int = self._readState(self.calibration_file)
             # If calibration file does not exist:
             if not state_int:
-                # TODO: Fork new job to run BME688 sensor burn-in
-                pass
+                logging.error("BME688 is missing calibration curve")
+                self.data["calibrated"].value = 0
             else:
                 self.sensor.set_bsec_state(state_int)
+                self.data["calibrated"].value = 1
             self.sensor.set_sample_rate(self.sample_rate)
 
             logging.info("Initialization complete!")
@@ -121,6 +122,7 @@ class BME688(DriverBase):
             "CO2-eq": Value("d", 0.0),
             "bVOC-eq": Value("d", 0.0),
             "initialized": Value("i", 0),
+            "calibrated": Value("i", 1),
         }
         return self.data
 
