@@ -4,13 +4,12 @@ Will Richards, Oregon State University, 2023
 Abstraction layer for the BME688 gas sensor
 """
 
-import board
-import adafruit_bme680
-
 import logging
-from time import  time
+from time import time, sleep
 import os
 
+from bme68x import BME68X
+import bsecConstants as bsec
 
 from drivers.DriverBase import DriverBase
 from multiprocessing import Event, Value
@@ -29,7 +28,7 @@ class BME688(DriverBase):
         self.sensor = None
         self.failedToInit = False
 
-        # Set this proccess to loop once a second
+        # Set this process to loop once a second
         self.setLoopTime(1)
 
         # When the device is restarted we want to clear the last savedState
@@ -44,25 +43,15 @@ class BME688(DriverBase):
     """
     def initialize(self):
         try:
-            i2c = board.I2C()
-            self.sensor = adafruit_bme680.Adafruit_BME680_I2C(i2c, address=self.i2c_address)
-            
-            # Set oversampling amounts
-            self.sensor.temperature_oversample = 8
-            self.sensor.humidity_oversample = 2
-            self.sensor.pressure_oversample = 4
-            
-            # Set IIR Filter size
-            self.sensor.filter_size = 3
-            
-            # Set heater temperature and duration
-            self.sensor.set_gas_heater(320, 150)
+            # i2c_bus = 1 is standard for Raspberry Pi main I2C bus
+            self.sensor = BME68X(self.i2c_address, 1)
+            self.sensor.set_sample_rate(bsec.BSEC_SAMPLE_RATE_LP)
             
             logging.info("Initialization complete!")
             self.initialized = True
             self.data["initialized"].value = 1
         except Exception as e:
-            logging.error(f"An error occured intializing BME680: {e}")
+            logging.error(f"An error occured intializing BME688: {e}")
             self.failedToInit = True
             self.initialized = False
             self.data["initialized"].value = 0
@@ -70,29 +59,33 @@ class BME688(DriverBase):
 
     """
     Measure and store the readings from the BME688.
-    Note: IAQ, sIAQ, CO2-eq, and bVOC-eq are no longer calculated as BSEC has been removed.
+    Now uses bme68x library with BSEC 2.0 to calculate IAQ, sIAQ, CO2-eq, and bVOC-eq.
     """
     def measure(self):
         if self.sensor is None or self.failedToInit:
             return
 
         try:
-            self.data["temperature(c)"].value = self.sensor.temperature
-            self.data["pressure(kpa)"].value = self.sensor.pressure * 0.1  # Convert hPa to kPa
-            self.data["humidity(%rh)"].value = self.sensor.relative_humidity
+            bsec_data = self.sensor.get_bsec_data()
+            if bsec_data is None or bsec_data == {}:
+                # The sensor may not have data ready immediately
+                return
+            
+            self.data["temperature(c)"].value = bsec_data.get("temperature", 0.0)
+            
+            # raw_pressure is returned in Pa, converting to kPa
+            self.data["pressure(kpa)"].value = bsec_data.get("raw_pressure", 0.0) / 1000.0  
+            
+            self.data["humidity(%rh)"].value = bsec_data.get("humidity", 0.0)
 
             # Measure gas resistance
-            gas_res = self.sensor.gas
-            if gas_res is not None:
-                self.data["gas_resistance(ohms)"].value = gas_res
-            else:
-                logging.warning("Gas data was not ready to collect at this time")
+            self.data["gas_resistance(ohms)"].value = bsec_data.get("raw_gas", 0.0)
 
-            # BSEC metrics are no longer available
-            self.data["iaq"].value = 0.0
-            self.data["sIAQ"].value = 0.0
-            self.data["CO2-eq"].value = 0.0
-            self.data["bVOC-eq"].value = 0.0
+            # BSEC metrics
+            self.data["iaq"].value = bsec_data.get("iaq", 0.0)
+            self.data["sIAQ"].value = bsec_data.get("static_iaq", 0.0)
+            self.data["CO2-eq"].value = bsec_data.get("co2_equivalent", 0.0)
+            self.data["bVOC-eq"].value = bsec_data.get("breath_voc_equivalent", 0.0)
                 
         except Exception as e:
             logging.error(f"The following error occured while attempting to read data: {e}")
@@ -120,4 +113,3 @@ class BME688(DriverBase):
     """
     def kill(self):
         self.sensor = None
-
