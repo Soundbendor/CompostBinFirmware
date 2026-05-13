@@ -3,7 +3,8 @@ Abstraction layer for the BME688 gas sensor
 """
 
 import logging
-from time import time
+import threading
+from time import time, sleep
 from pathlib import Path
 
 from bme68x import BME68X
@@ -11,7 +12,7 @@ import bme68xConstants as bme_cnst
 import bsecConstants as bsec
 
 from drivers.DriverBase import DriverBase
-from multiprocessing import Value
+from multiprocessing import Value, Event
 
 
 class BME688(DriverBase):
@@ -34,6 +35,12 @@ class BME688(DriverBase):
         self.dur_prof = [5, 2, 10, 30, 5, 5, 5, 5, 5, 5]
         # TODO: Determine
         self.calibration_file = "conf/bme688_state.txt"
+        self.events = {"CALIBRATE": Event(), "STOP_CALIBRATION": Event()}
+
+        # Threading and calibration state
+        self.sensor_lock = threading.Lock()
+        self.is_calibrating = False
+        self.calibration_thread = None
 
         # Set this process to loop once a second
         self.setLoopTime(1)
@@ -80,14 +87,17 @@ class BME688(DriverBase):
         if self.sensor is None or self.failedToInit:
             return
 
+        self.handleEvents()
+
         try:
-            bsec_data = self.sensor.get_bsec_data()
+            with self.sensor_lock:
+                bsec_data = self.sensor.get_bsec_data()
+
             if bsec_data is None or bsec_data == {}:
                 # The sensor may not have data ready immediately
                 return
 
             self.data["temperature(c)"].value = bsec_data.get("temperature", 0.0)
-
             # raw_pressure is returned in Pa, converting to kPa
             self.data["pressure(kpa)"].value = (
                 bsec_data.get("raw_pressure", 0.0) / 1000.0
@@ -100,6 +110,7 @@ class BME688(DriverBase):
 
             # BSEC metrics
             self.data["iaq"].value = bsec_data.get("iaq", 0.0)
+            self.data["iaq_accuracy"].value = bsec_data.get("iaq_accuracy", 0)
             self.data["sIAQ"].value = bsec_data.get("static_iaq", 0.0)
             self.data["CO2-eq"].value = bsec_data.get("co2_equivalent", 0.0)
             self.data["bVOC-eq"].value = bsec_data.get("breath_voc_equivalent", 0.0)
@@ -120,6 +131,7 @@ class BME688(DriverBase):
             "humidity(%rh)": Value("d", 0.0),
             "gas_resistance(ohms)": Value("d", 0.0),
             "iaq": Value("d", 0.0),
+            "iaq_accuracy": Value("i", 0),
             "sIAQ": Value("d", 0.0),
             "CO2-eq": Value("d", 0.0),
             "bVOC-eq": Value("d", 0.0),
@@ -127,6 +139,85 @@ class BME688(DriverBase):
             "calibrated": Value("i", 1),
         }
         return self.data
+
+    def handleEvents(self):
+        if self.getEvent("CALIBRATE").is_set():
+            if not self.is_calibrating:
+                logging.info("Calibration event triggered. Starting background thread.")
+                self.is_calibrating = True
+                self.calibration_thread = threading.Thread(
+                    target=self._run_calibration_thread, daemon=True
+                )
+                self.calibration_thread.start()
+            self.getEvent("CALIBRATE").clear()
+
+        if self.getEvent("STOP_CALIBRATION").is_set():
+            if self.is_calibrating:
+                logging.info("Stop calibration event triggered. Interrupting thread.")
+                self.is_calibrating = False
+            self.getEvent("STOP_CALIBRATION").clear()
+
+    def _run_calibration_thread(self):
+        """
+        Background thread that runs for 24 hours, polls data, and saves state.
+        """
+        start_time = time()
+        duration = 24 * 3600  # 24 hours
+        log_interval = 60  # Log data every minute
+        last_log = 0
+
+        logging.info("BME688 Calibration thread started.")
+
+        try:
+            # 1: Run 24hr data collection loop
+            while self.is_calibrating:
+                elapsed = time() - start_time
+                with self.sensor_lock:
+                    state = self.sensor.get_bsec_state()
+                    while state is None:
+                        state = self.sensor.get_bsec_state()
+
+                accuracy = state["iaq_accuracy"]
+                iaq = state["iaq"]
+
+                # Termination condition: 24h passed AND accuracy is 3
+                if elapsed >= duration and accuracy >= 3:
+                    logging.info(
+                        "24h Calibration period complete. Saving sensor state."
+                    )
+                    break
+
+                if time() - last_log > log_interval:
+                    logging.info(
+                        f"Calibration in progress: {int(elapsed)}s elapsed. IAQ: {iaq}, Accuracy: {accuracy}"
+                    )
+                    last_log = time()
+
+                sleep(1)
+
+            # 2: Save state file
+            if self.is_calibrating:
+                logging.info("24h Calibration period complete. Saving sensor state.")
+                with self.sensor_lock:
+                    state = self.sensor.get_bsec_state()
+                    # Saving state to file
+                    state_path = (
+                        Path(__file__).resolve().parent.joinpath(self.calibration_file)
+                    )
+                    state_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(state_path, "w") as f:
+                        f.write(str(state))
+
+                self.data["calibrated"].value = 1
+                logging.info(f"Calibration curve saved to {state_path}")
+            else:
+                logging.info("Calibration interrupted by user.")
+
+        except Exception as e:
+            logging.error(f"Error during calibration thread: {e}")
+        finally:
+            self.is_calibrating = False
+            self.calibration_thread = None
 
     """
     Shutdown the process

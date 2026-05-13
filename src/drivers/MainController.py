@@ -62,10 +62,6 @@ class MainController:
             os.remove("../data/updated.txt")
         print(self.isBootFromUpdate)
 
-        # TODO : ass
-        sensors = {
-            "led_driver": LEDDriver(self.isBootFromUpdate),
-        }
         # Create a manager device passing the NAU7802 in as well as a generic TestDriver that just adds two numbers
         self.manager = DriverManager(
             LEDDriver(self.isBootFromUpdate),
@@ -98,7 +94,10 @@ class MainController:
         # TODO: Check that sensors have successfully calibrated at startup time
         if not self.manager.isBMECalibrated:
             # TODO: Fork a new job for burn-in curve, set timer to re-start BME688 sensor
-            logging.error("No BME688 sensor calibration curve found")
+            logging.error(
+                "No BME688 sensor calibration curve found. Triggering 24hr burn-in"
+            )
+            self.manager.setEvent("BME688.CALIBRATE")
 
         # First-time setup weight
         self.initialWeight = self.manager.getData()["NAU7802"]["data"]["weight"].value
