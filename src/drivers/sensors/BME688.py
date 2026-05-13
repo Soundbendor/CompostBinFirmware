@@ -38,7 +38,7 @@ class BME688(DriverBase):
         self.events = {"CALIBRATE": Event(), "STOP_CALIBRATION": Event()}
 
         # Threading and calibration state
-        self.sensor_lock = threading.Lock()
+        self.sensor_lock = None
         self.is_calibrating = False
         self.calibration_thread = None
 
@@ -53,6 +53,7 @@ class BME688(DriverBase):
 
     def initialize(self):
         try:
+            self.sensor_lock = threading.Lock()
             # i2c_bus = 1 is standard for Raspberry Pi main I2C bus
             self.sensor = BME68X(self.i2c_address, 1)
             self.sensor.set_heatr_conf(
