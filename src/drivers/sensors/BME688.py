@@ -85,10 +85,12 @@ class BME688(DriverBase):
     """
 
     def measure(self):
+        # Always check events, even if sensor isn't ready,
+        # but the handler must be safe.
+        self.handleEvents()
+
         if self.sensor is None or self.failedToInit:
             return
-
-        self.handleEvents()
 
         try:
             with self.sensor_lock:
@@ -137,24 +139,29 @@ class BME688(DriverBase):
             "CO2-eq": Value("d", 0.0),
             "bVOC-eq": Value("d", 0.0),
             "initialized": Value("i", 0),
-            "calibrated": Value("i", 1),
+            "calibrated": Value("i", 0),
         }
         return self.data
 
     def handleEvents(self):
-        if self.getEvent("CALIBRATE").is_set():
-            if not self.is_calibrating:
-                logging.info("Calibration event triggered. Starting background thread.")
+        calibrate_event = self.getEvent("CALIBRATE")
+        if calibrate_event.is_set():
+            logging.info("CALIBRATE event is SET.")
+            if self.sensor is None:
+                logging.error("Cannot calibrate: Sensor is not initialized.")
+            elif not self.is_calibrating:
+                logging.info("Starting background calibration thread.")
                 self.is_calibrating = True
                 self.calibration_thread = threading.Thread(
                     target=self._run_calibration_thread, daemon=True
                 )
                 self.calibration_thread.start()
-            self.getEvent("CALIBRATE").clear()
+            calibrate_event.clear()
 
         if self.getEvent("STOP_CALIBRATION").is_set():
+            logging.info("STOP_CALIBRATION event is SET.")
             if self.is_calibrating:
-                logging.info("Stop calibration event triggered. Interrupting thread.")
+                logging.info("Interrupting calibration thread.")
                 self.is_calibrating = False
             self.getEvent("STOP_CALIBRATION").clear()
 

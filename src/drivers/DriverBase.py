@@ -21,8 +21,6 @@ class DriverBase:
         # The rate at which the thread this driver is running in will loop
         self.loopTime = 0.001
         self.initialized = False
-        # Most sensors don't require calibration, so we return True by default
-        self.calibrated = True
 
         # Flag for testing mode. Allows driver to be used without DriverManager
         self.testing = False
