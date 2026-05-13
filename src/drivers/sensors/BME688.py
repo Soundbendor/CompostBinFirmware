@@ -174,9 +174,9 @@ class BME688(DriverBase):
             while self.is_calibrating:
                 elapsed = time() - start_time
                 with self.sensor_lock:
-                    state = self.sensor.get_bsec_state()
+                    state = self.sensor.get_bsec_data()
                     while state is None:
-                        state = self.sensor.get_bsec_state()
+                        state = self.sensor.get_bsec_data()
 
                 accuracy = state.get("iaq_accuracy", 0)
                 iaq = state.get("iaq", 0)
