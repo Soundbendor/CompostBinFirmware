@@ -178,8 +178,8 @@ class BME688(DriverBase):
                     while state is None:
                         state = self.sensor.get_bsec_state()
 
-                accuracy = state["iaq_accuracy"]
-                iaq = state["iaq"]
+                accuracy = state.get("iaq_accuracy", 0)
+                iaq = state.get("iaq", 0)
 
                 # Termination condition: 24h passed AND accuracy is 3
                 if elapsed >= duration and accuracy >= 3:
