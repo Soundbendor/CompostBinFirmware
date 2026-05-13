@@ -174,7 +174,7 @@ class BME688(DriverBase):
         log_interval = 60  # Log data every minute
         last_log = 0
 
-        logging.info("BME688 Calibration thread started.")
+        logging.error("BME688 Calibration thread started.")
 
         try:
             # 1: Run 24hr data collection loop
@@ -190,13 +190,13 @@ class BME688(DriverBase):
 
                 # Termination condition: 24h passed AND accuracy is 3
                 if elapsed >= duration and accuracy >= 3:
-                    logging.info(
+                    logging.error(
                         "24h Calibration period complete. Saving sensor state."
                     )
                     break
 
                 if time() - last_log > log_interval:
-                    logging.info(
+                    logging.error(
                         f"Calibration in progress: {int(elapsed)}s elapsed. IAQ: {iaq}, Accuracy: {accuracy}"
                     )
                     last_log = time()
