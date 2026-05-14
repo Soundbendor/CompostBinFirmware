@@ -1,4 +1,4 @@
-""""
+""" "
 Will Richards, Oregon State University, 2024
 
 Abstraction layer for the D405/D401 Intel Realsense depth camera
@@ -30,11 +30,11 @@ class RealsenseCam(DriverBase):
         self.camera_height = height
 
         # Realsense paramters
-        self.realsense_pipeline = rs.pipeline()
-        self.realsense_config = rs.config()
-        self.realsense_colorizer = rs.colorizer()
-        self.realsense_pointcloud = rs.pointcloud()
-        self.realsense_align = rs.align(rs.stream.color)
+        self.realsense_pipeline = None
+        self.realsense_config = None
+        self.realsense_colorizer = None
+        self.realsense_pointcloud = None
+        self.realsense_align = None
         self.controllerConnection = controllerPipe
 
         # for dev in rs.context().query_devices():
@@ -48,6 +48,12 @@ class RealsenseCam(DriverBase):
     """
 
     def initialize(self):
+        self.realsense_pipeline = rs.pipeline()
+        self.realsense_config = rs.config()
+        self.realsense_colorizer = rs.colorizer()
+        self.realsense_pointcloud = rs.pointcloud()
+        self.realsense_align = rs.align(rs.stream.color)
+
         self.realsense_config.enable_stream(
             rs.stream.color,
             self.camera_width,
@@ -103,7 +109,6 @@ class RealsenseCam(DriverBase):
 
         # If a capture event was triggered we want to grab the current frames from the camera
         if self.getEvent("CAPTURE").is_set():
-
             # If the device didn't initialize we want to clear the capture so we don't hang forever
             if not self.initialized:
                 self.getEvent("CAPTURE").clear()
@@ -113,7 +118,6 @@ class RealsenseCam(DriverBase):
             capSuccsess, frames = self.realsense_pipeline.try_wait_for_frames()
 
             if capSuccsess:
-
                 # Actually pull the frames out of our wait attempt and verify they are valid
 
                 aligned_frames = self.realsense_align.process(frames)
@@ -169,7 +173,8 @@ class RealsenseCam(DriverBase):
 
     def kill(self):
         try:
-            self.realsense_pipeline.stop()
+            if self.realsense_pipeline:
+                self.realsense_pipeline.stop()
         except RuntimeError as e:
             logging.error(f"An error occurred: {e}")
 
@@ -201,4 +206,3 @@ class RealsenseCam(DriverBase):
                 totalIndex += 1
         with open(fileNames["RGBDTensor"], "wb") as f:
             np.save(f, rgbd_tensor)
-

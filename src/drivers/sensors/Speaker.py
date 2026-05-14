@@ -22,9 +22,12 @@ class Speaker():
         self.device_index = 0
         self.channels = 1
         self.frames_per_buffer = 1024
+        self.pAudio = None
+        self.initialized = False
+
+    def initialize(self):
         self.pAudio = pyaudio.PyAudio()
         self.initialized = True
-
     
     """
     Play a given audio file out of the waveshare connected speaker
@@ -32,6 +35,9 @@ class Speaker():
     :pram clipName: The name of the .wav file to paly
     """
     def playClip(self, clipName):
+        if self.pAudio is None:
+            return
+
         wf = wave.open(clipName, 'r')
 
         # Attempt to open the speaker stream
@@ -42,7 +48,7 @@ class Speaker():
                 output = True,
                 output_device_index=self.device_index)
         except Exception as e:
-            logging.error("Failed to open audio input device: {e}")
+            logging.error(f"Failed to open audio input device: {e}")
             self.initialized = False
 
         # Only if the device succsessfully initialized should we actually attempt to write to it
@@ -55,7 +61,8 @@ class Speaker():
         self.stream.close()
 
     def kill(self):
-        self.pAudio.terminate()
+        if self.pAudio:
+            self.pAudio.terminate()
 
     """
     Mute the speaker attatched to the waveshare adapter

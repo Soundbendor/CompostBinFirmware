@@ -39,7 +39,7 @@ class LidSwitch(DriverBase):
     Initialize the pin mode required to read the data from the hall-effect sensor
     """
     def initialize(self):
-        self.request = gpiod.request_lines("/dev/gpiochip4", consumer="HallEffect", config={
+        self.request = gpiod.request_lines("/dev/gpiochip0", consumer="HallEffect", config={
             self.selectedPin: gpiod.LineSettings(
                 direction=Direction.INPUT
             )

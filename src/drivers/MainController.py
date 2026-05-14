@@ -8,6 +8,7 @@ import json
 import os
 import time
 import uuid
+import logging
 from multiprocessing import Pipe, Queue
 
 from drivers.DriverManager import DriverManager
@@ -28,7 +29,6 @@ from helpers import CalibrationLoader, Logging
 
 
 class MainController:
-
     """
     Create a new instance of our main controlller
     """
@@ -72,12 +72,12 @@ class MainController:
             RealsenseCam(realsenseControllerConenction),
             SoundController(soundControllerConnection, self.isMuted),
             AsyncPublisher(self.publisherQueue, self.commitID),
-            BluetoothDriver(self.isMuted)
+            BluetoothDriver(self.isMuted),
         )
 
         self.wifiManager = WiFiManager()
         self.lastRecording = ""
-        
+
         # Preform the device setup
         self.initialSetup()
 
@@ -91,15 +91,26 @@ class MainController:
             time.sleep(2)
             self.manager.setEvent("LEDDriver.NONE")
 
+        # TODO: Check that sensors have successfully calibrated at startup time
+        if not self.manager.isBMECalibrated:
+            # TODO: Fork a new job for burn-in curve, set timer to re-start BME688 sensor
+            logging.error(
+                "No BME688 sensor calibration curve found. Triggering 24hr burn-in"
+            )
+            self.manager.setEvent("BME688.CALIBRATE")
+
         # First-time setup weight
         self.initialWeight = self.manager.getData()["NAU7802"]["data"]["weight"].value
-        self.startingWeight = self.manager.getData()["NAU7802"]["data"]["weight"].value - self.initialWeight
+        self.startingWeight = (
+            self.manager.getData()["NAU7802"]["data"]["weight"].value
+            - self.initialWeight
+        )
         self.is_initialized = True
- 
 
     """
     Handles the initial power on setup ensuring WiFi is connected and the bluetooth controller is running
     """
+
     def initialSetup(self):
         # Tell the user that bluetooth services have been enabled for the next 5 minutes
         if not self.isMuted and not self.isBootFromUpdate:
@@ -109,7 +120,11 @@ class MainController:
 
         # Inform the user the WiFi is not connected and check once every 20 seconds, wait until we are connected to WiFi
         wifiState = self.wifiManager.checkConnection()
-        if not bool(wifiState["internet_access"]) and not self.isMuted and not self.isBootFromUpdate:
+        if (
+            not bool(wifiState["internet_access"])
+            and not self.isMuted
+            and not self.isBootFromUpdate
+        ):
             self.manager.setEvent("SoundController.NO_WIFI")
             while self.manager.getEvent("SoundController.NO_WIFI"):
                 time.sleep(0.1)
@@ -118,7 +133,7 @@ class MainController:
         wifiRetries = 0
         try:
             while wifiRetries < 4:
-                wifiState =  self.wifiManager.checkConnection()
+                wifiState = self.wifiManager.checkConnection()
                 if bool(wifiState["internet_access"]):
                     break
                 time.sleep(5)
@@ -126,11 +141,15 @@ class MainController:
         except KeyboardInterrupt:
             pass
 
-        if not self.isMuted and not self.isBootFromUpdate and bool(wifiState["internet_access"]):
+        if (
+            not self.isMuted
+            and not self.isBootFromUpdate
+            and bool(wifiState["internet_access"])
+        ):
             self.manager.setEvent("SoundController.CONNECTED_TO_WIFI")
             while self.manager.getEvent("SoundController.CONNECTED_TO_WIFI"):
                 time.sleep(0.1)
-        
+
         hadToWaitForClose = False
         # Check if the lid is open before taring and if so then yell at the user
         while self.manager.getData()["LidSwitch"]["data"]["Lid_State"].value == 1:
@@ -156,6 +175,7 @@ class MainController:
     """
     Handles events that need to be checked quickly in the main loop
     """
+
     def handleCallbacks(self):
         # Check the state of the LidSwitch
         if self.manager.getEvent("LidSwitch.LID_CLOSED") and self.is_initialized:
@@ -168,27 +188,42 @@ class MainController:
                 "weight"
             ].value
             self.manager.clearEvent("LidSwitch.LID_CLOSED")
-        
+
         # If at any point we have lost our WiFi connection we want to tell the user that
-        if self.manager.getEvent("BluetoothDriver.LOST_WIFI_CONNECTION") and not self.isMuted:
+        if (
+            self.manager.getEvent("BluetoothDriver.LOST_WIFI_CONNECTION")
+            and not self.isMuted
+        ):
             self.manager.setEvent("SoundController.NO_WIFI")
             self.manager.clearEvent("BluetoothDriver.LOST_WIFI_CONNECTION")
 
         # If at any point we have lost our WiFi connection we want to tell the user that
-        if self.manager.getEvent("BluetoothDriver.GOT_WIFI_CONNECTION") and not self.isMuted:
+        if (
+            self.manager.getEvent("BluetoothDriver.GOT_WIFI_CONNECTION")
+            and not self.isMuted
+        ):
             self.manager.setEvent("SoundController.CONNECTED_TO_WIFI")
             self.manager.clearEvent("BluetoothDriver.GOT_WIFI_CONNECTION")
 
-        if self.manager.getEvent("BluetoothDriver.BLUETOOTH_STOPPED") and not self.isMuted:
+        if (
+            self.manager.getEvent("BluetoothDriver.BLUETOOTH_STOPPED")
+            and not self.isMuted
+        ):
             self.manager.setEvent("SoundController.BLUETOOTH_STOPPED")
             self.manager.clearEvent("BluetoothDriver.BLUETOOTH_STOPPED")
 
         # If our bluetooth driver is requesting a mute than we want to check the last muted state to see if we should play the audio
-        if bool(self.manager.getData()["BluetoothDriver"]["data"]["muted"].value) and not self.isMuted:
+        if (
+            bool(self.manager.getData()["BluetoothDriver"]["data"]["muted"].value)
+            and not self.isMuted
+        ):
             self.manager.setEvent("SoundController.MUTED")
             self.isMuted = True
             self.updateConfig()
-        elif not bool(self.manager.getData()["BluetoothDriver"]["data"]["muted"].value) and self.isMuted:
+        elif (
+            not bool(self.manager.getData()["BluetoothDriver"]["data"]["muted"].value)
+            and self.isMuted
+        ):
             self.manager.setEvent("SoundController.UNMUTED")
             self.isMuted = False
             self.updateConfig()
@@ -200,7 +235,7 @@ class MainController:
     """
 
     def collectData(self, triggeredByLid=True) -> bool:
-        
+
         # When collect data is called we want to set the trigger type
         data = self.manager.getData()
         fileNames = {}
@@ -217,7 +252,11 @@ class MainController:
         self.manager.setEvent("MLX90640.CAPTURE")
 
         # While the capture events are still set we should just wait until they are cleared meaning they succeeded
-        while self.manager.getEvent("Realsense.CAPTURE") or self.manager.getEvent("MLX90640.CAPTURE") or self.manager.getEvent("SoundController.RECORD"):
+        while (
+            self.manager.getEvent("Realsense.CAPTURE")
+            or self.manager.getEvent("MLX90640.CAPTURE")
+            or self.manager.getEvent("SoundController.RECORD")
+        ):
             time.sleep(0.2)
 
         # Grab dictionaries of the file paths generated from the Realsense module and the MLX90640 module and microphone
@@ -228,10 +267,7 @@ class MainController:
         # Set the light to yellow before recording the
         self.manager.setEvent("LEDDriver.PROCESSING")
 
-        
-
         # Add the most recent batch of data to the transcription and publishing queue
-        
 
         self.manager.setEvent("SoundController.STOP_RECORDING")
 
@@ -252,14 +288,12 @@ class MainController:
         self.manager.kill()
 
     def updateConfig(self):
-        with open("../data/config.json", 'w') as outFile:
+        with open("../data/config.json", "w") as outFile:
             output = {"muted": self.isMuted}
             json.dump(output, outFile)
-    
+
     def loadConfig(self):
-         if os.path.exists("../data/config.json"):
-            with open("../data/config.json", 'r') as inFile:
+        if os.path.exists("../data/config.json"):
+            with open("../data/config.json", "r") as inFile:
                 data = json.load(inFile)
                 self.isMuted = bool(data["muted"])
-      
-

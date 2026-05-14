@@ -1,128 +1,258 @@
-""""
-Will Richards, Oregon State University, 2023
-
+"""
 Abstraction layer for the BME688 gas sensor
 """
 
-import bme680
-
 import logging
-from time import  time
-import os
-from ctypes import *
+import threading
+from time import time, sleep
+from pathlib import Path
 
+from bme68x import BME68X
+import bme68xConstants as bme_cnst
+import bsecConstants as bsec
 
 from drivers.DriverBase import DriverBase
-from multiprocessing import Event, Value
+from multiprocessing import Value, Event
+
 
 class BME688(DriverBase):
-
     """
     Basic constructor for the BME688
 
     :param i2c_address: The given I2C address this device is registered with
     """
-    def __init__(self, i2c_address = 0x77):
+
+    def __init__(self, i2c_address=0x77):
         super().__init__("BME688")
 
+        self.i2c_address = i2c_address
+        self.sensor = None
         self.failedToInit = False
-        try:
-            self.sensor = bme680.BME680(i2c_address)
-        except RuntimeError as e:
-            logging.error(f"An error occured intializing BME680: {e}")
-            self.failedToInit = True
+        self.sample_rate = bsec.BSEC_SAMPLE_RATE_LP
+        self.heater_status = bme_cnst.BME68X_ENABLE
+        self.parallel_mode = bme_cnst.BME68X_PARALLEL_MODE
+        self.temp_prof = [320, 100, 100, 100, 200, 200, 200, 320, 320, 320]
+        self.dur_prof = [5, 2, 10, 30, 5, 5, 5, 5, 5, 5]
+        # TODO: Determine
+        self.calibration_file = "conf/bme688_state.txt"
+        self.events = {"CALIBRATE": Event(), "STOP_CALIBRATION": Event()}
 
-        script_dir = os.path.abspath(os.path.dirname(__file__))
-        lib_path = os.path.join(script_dir, "bsec_python.so")
-        self.functions = cdll.LoadLibrary(lib_path)
+        # Threading and calibration state
+        self.sensor_lock = None
+        self.is_calibrating = False
+        self.calibration_thread = None
 
-        # Set this proccess to loop once a second
+        # Set this process to loop once a second
         self.setLoopTime(1)
 
-        # When the device is restarted we want to clear the last savedState
-        if(os.path.exists("savedState.dat")):
-            os.remove("savedState.dat")
-
         self.startTime = time()
-
 
     """
     Initialize the BME688 to begin taking sensor readings
     """
+
     def initialize(self):
-        if not self.failedToInit:
-            # Set oversampling amounts
-            self.sensor.set_humidity_oversample(bme680.OS_2X)
-            self.sensor.set_pressure_oversample(bme680.OS_4X)
-            self.sensor.set_temperature_oversample(bme680.OS_8X)
+        try:
+            self.sensor_lock = threading.Lock()
+            # i2c_bus = 1 is standard for Raspberry Pi main I2C bus
+            self.sensor = BME68X(self.i2c_address, 1)
+            # self.sensor.set_heatr_conf(
+            #     self.heater_status, self.temp_prof, self.dur_prof, self.parallel_mode
+            # )
+            # read config file
+            state_int = self._readState(self.calibration_file)
+            # If calibration file does not exist:
+            if not state_int:
+                logging.error("BME688 is missing calibration curve")
+                self.data["calibrated"].value = 0
+            else:
+                self.sensor.set_bsec_state(state_int)
+                self.data["calibrated"].value = 1
+            self.sensor.set_sample_rate(self.sample_rate)
 
-            # Set IIR Filter size and whether or not we should be measuring gas
-            self.sensor.set_filter(bme680.FILTER_SIZE_3)
-            self.sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
-
-            # Set heater temperature and duration and finally select the profile
-            self.sensor.set_gas_heater_temperature(320)
-            self.sensor.set_gas_heater_duration(150)
-            self.sensor.select_gas_heater_profile(0)
             logging.info("Initialization complete!")
             self.initialized = True
             self.data["initialized"].value = 1
-        else:
-            logging.error("Failed to initialize sensor!")
+        except Exception as e:
+            logging.error(f"An error occured intializing BME688: {e}")
+            self.failedToInit = True
             self.initialized = False
             self.data["initialized"].value = 0
-       
 
     """
-    Measure and store the readigns from the BME688 passing the gas resistance values through the Bosch BSEC library to compute equivelent CO2 and bVOC
+    Measure and store the readings from the BME688.
+    Now uses bme68x library with BSEC 2.0 to calculate IAQ, sIAQ, CO2-eq, and bVOC-eq.
     """
+
     def measure(self):
+        # Always check events, even if sensor isn't ready,
+        # but the handler must be safe.
+        self.handleEvents()
+
+        if self.sensor is None or self.failedToInit:
+            return
+
         try:
-            if(self.sensor.get_sensor_data()):
-                ts = int(time()-self.startTime)
-                self.data["temperature(c)"].value = self.sensor.data.temperature
-                self.data["pressure(kpa)"].value = self.sensor.data.pressure * 0.1  # Convert hectopascals to kilopascals
-                self.data["humidity(%rh)"].value = self.sensor.data.humidity
+            with self.sensor_lock:
+                bsec_data = self.sensor.get_bsec_data()
 
-                # Only measure the gas if the measurement is ready
-                if(self.sensor.data.heat_stable):
-                    self.data["gas_resistance(ohms)"].value = self.sensor.data.gas_resistance
-                else:
-                    logging.warning("Gas data was not ready to collect at this time the last value will be returned in place")
+            if bsec_data is None or bsec_data == {}:
+                # The sensor may not have data ready immediately
+                return
 
-                # Call our BSEC library to give us additional data
-                arr = [0, 0, 0, 0, 0, 0, 0]
-                arr_c = (c_float * 7)(*arr)
-                self.functions.proccess_bme_data(c_int(ts),c_float(self.sensor.data.temperature), c_float(self.sensor.data.pressure), c_float(self.sensor.data.humidity), c_float(self.sensor.data.gas_resistance), arr_c) 
-                self.data["iaq"].value = arr_c[0]
-                self.data["sIAQ"].value = arr_c[4]
-                self.data["CO2-eq"].value = arr_c[5]
-                self.data["bVOC-eq"].value = arr_c[6]
-                
+            self.data["temperature(c)"].value = bsec_data.get("temperature", 0.0)
+            # raw_pressure is returned in Pa, converting to kPa
+            self.data["pressure(kpa)"].value = (
+                bsec_data.get("raw_pressure", 0.0) / 1000.0
+            )
+
+            self.data["humidity(%rh)"].value = bsec_data.get("humidity", 0.0)
+
+            # Measure gas resistance
+            self.data["gas_resistance(ohms)"].value = bsec_data.get("raw_gas", 0.0)
+
+            # BSEC metrics
+            self.data["iaq"].value = bsec_data.get("iaq", 0.0)
+            self.data["iaq_accuracy"].value = bsec_data.get("iaq_accuracy", 0)
+            self.data["sIAQ"].value = bsec_data.get("static_iaq", 0.0)
+            self.data["CO2-eq"].value = bsec_data.get("co2_equivalent", 0.0)
+            self.data["bVOC-eq"].value = bsec_data.get("breath_voc_equivalent", 0.0)
+
         except Exception as e:
-            logging.error(f"The following error occured while attempting to read data: {e}")
-        
-    
+            logging.error(
+                f"The following error occured while attempting to read data: {e}"
+            )
+
     """
     Create a dictionary of the data that this sensor will output
     """
+
     def createDataDict(self):
         self.data = {
-            "temperature(c)": Value('d', 0.0),
-            "pressure(kpa)": Value('d', 0.0),
-            "humidity(%rh)": Value('d', 0.0),
-            "gas_resistance(ohms)": Value('d', 0.0),
-            "iaq": Value('d', 0.0),
-            "sIAQ": Value('d', 0.0),
-            "CO2-eq": Value('d', 0.0),
-            "bVOC-eq": Value('d', 0.0),
-            "initialized": Value('i', 0)
+            "temperature(c)": Value("d", 0.0),
+            "pressure(kpa)": Value("d", 0.0),
+            "humidity(%rh)": Value("d", 0.0),
+            "gas_resistance(ohms)": Value("d", 0.0),
+            "iaq": Value("d", 0.0),
+            "iaq_accuracy": Value("i", 0),
+            "sIAQ": Value("d", 0.0),
+            "CO2-eq": Value("d", 0.0),
+            "bVOC-eq": Value("d", 0.0),
+            "initialized": Value("i", 0),
+            "calibrated": Value("i", 0),
         }
         return self.data
-    
+
+    def handleEvents(self):
+        calibrate_event = self.getEvent("CALIBRATE")
+        if calibrate_event.is_set():
+            logging.info("CALIBRATE event is SET.")
+            if self.sensor is None:
+                logging.error("Cannot calibrate: Sensor is not initialized.")
+            elif not self.is_calibrating:
+                logging.info("Starting background calibration thread.")
+                self.is_calibrating = True
+                self.calibration_thread = threading.Thread(
+                    target=self._run_calibration_thread, daemon=True
+                )
+                self.calibration_thread.start()
+            calibrate_event.clear()
+
+        if self.getEvent("STOP_CALIBRATION").is_set():
+            logging.info("STOP_CALIBRATION event is SET.")
+            if self.is_calibrating:
+                logging.info("Interrupting calibration thread.")
+                self.is_calibrating = False
+            self.getEvent("STOP_CALIBRATION").clear()
+
+    def _run_calibration_thread(self):
+        """
+        Background thread that runs for 24 hours, polls data, and saves state.
+        """
+        start_time = time()
+        duration = 24 * 3600  # 24 hours
+        log_interval = 60  # Log data every minute
+        last_log = 0
+
+        logging.error("BME688 Calibration thread started.")
+
+        try:
+            # 1: Run 24hr data collection loop
+            while self.is_calibrating:
+                elapsed = time() - start_time
+                state = None
+                while state is None:
+                    with self.sensor_lock:
+                        state = self.sensor.get_bsec_data()
+                    if not state:
+                        # allow the thread to sleep, release the lock on bme688
+                        sleep(1)
+
+                accuracy = state.get("iaq_accuracy", 0)
+                iaq = state.get("iaq", 0)
+
+                # Termination condition: 24h passed AND accuracy is 3
+                if elapsed >= duration and accuracy >= 3:
+                    logging.error(
+                        "24h Calibration period complete. Saving sensor state."
+                    )
+                    break
+
+                if time() - last_log > log_interval:
+                    logging.error(
+                        f"Calibration in progress: {int(elapsed)}s elapsed. IAQ: {iaq}, Accuracy: {accuracy}"
+                    )
+                    last_log = time()
+
+                sleep(1)
+
+            # 2: Save state file
+            if self.is_calibrating:
+                logging.info("24h Calibration period complete. Saving sensor state.")
+                with self.sensor_lock:
+                    state = self.sensor.get_bsec_state()
+                    # Saving state to file
+                    state_path = (
+                        Path(__file__).resolve().parent.joinpath(self.calibration_file)
+                    )
+                    state_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(state_path, "w") as f:
+                        f.write(str(state))
+
+                self.data["calibrated"].value = 1
+                logging.info(f"Calibration curve saved to {state_path}")
+            else:
+                logging.info("Calibration interrupted by user.")
+
+        except Exception as e:
+            logging.error(f"Error during calibration thread: {e}")
+        finally:
+            self.is_calibrating = False
+            self.calibration_thread = None
+
     """
-    Shutdown the proccess
+    Shutdown the process
     """
+
     def kill(self):
-        self.sensor._i2c.close()
-        
+        self.sensor = None
+
+    """
+    Read the calibration curve for the BME688 sensor
+    This calibration curve should be generated during bin calibration
+    """
+
+    def _readState(self, state_file_name: str) -> list[int] | None:
+        state_path = Path(__file__).resolve().parent.joinpath("conf", state_file_name)
+
+        if state_path.is_file():
+            state_file = open(str(state_path), "r")
+            # strip the brackets [.....]
+            state_str = state_file.read()[1:-1]
+            # split on delimiter ,
+            state_list = state_str.split(",")
+            state_int = [int(x) for x in state_list]
+            return state_int
+        else:
+            # Failed to load calibration curve
+            return None
