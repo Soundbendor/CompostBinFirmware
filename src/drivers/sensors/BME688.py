@@ -56,9 +56,9 @@ class BME688(DriverBase):
             self.sensor_lock = threading.Lock()
             # i2c_bus = 1 is standard for Raspberry Pi main I2C bus
             self.sensor = BME68X(self.i2c_address, 1)
-            self.sensor.set_heatr_conf(
-                self.heater_status, self.temp_prof, self.dur_prof, self.parallel_mode
-            )
+            # self.sensor.set_heatr_conf(
+            #     self.heater_status, self.temp_prof, self.dur_prof, self.parallel_mode
+            # )
             # read config file
             state_int = self._readState(self.calibration_file)
             # If calibration file does not exist:
