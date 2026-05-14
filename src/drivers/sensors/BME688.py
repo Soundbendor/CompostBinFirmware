@@ -180,10 +180,13 @@ class BME688(DriverBase):
             # 1: Run 24hr data collection loop
             while self.is_calibrating:
                 elapsed = time() - start_time
-                with self.sensor_lock:
-                    state = self.sensor.get_bsec_data()
-                    while state is None:
+                state = None
+                while state is None:
+                    with self.sensor_lock:
                         state = self.sensor.get_bsec_data()
+                    if not state:
+                        # allow the thread to sleep, release the lock on bme688
+                        sleep(1)
 
                 accuracy = state.get("iaq_accuracy", 0)
                 iaq = state.get("iaq", 0)
