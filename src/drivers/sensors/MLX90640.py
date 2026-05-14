@@ -74,8 +74,8 @@ class MLX90640(DriverBase):
     """
 
     def kill(self):
-        if self.mlx:
-            self.mlx.close()
+        if self.i2c:
+            self.i2c.deinit()
 
     """
     Convert MLX raw sensor reading to image
