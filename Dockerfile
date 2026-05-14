@@ -64,9 +64,6 @@ WORKDIR /firmware/bme68x-python-library-bsec2.6.1.0
 RUN BSEC2=64; export BSEC2; /firmware/.venv/bin/python3 setup.py install
 WORKDIR /firmware
 
-# Pre-download faster-whisper model
-RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8')"
-
 # RUN mv /firmware/dependencies/librealsense2.so /usr/local/lib/python3.14/site-packages/librealsense2.so
 # RUN mv /firmware/dependencies/pyrealsense2.cpython-314-aarch64-linux-gnu.so /usr/local/lib/python3.14/site-packages/pyrealsense2.cpython-314-aarch64-linux-gnu.so
 
@@ -79,5 +76,8 @@ COPY .aws /root/.aws
 ENTRYPOINT []
 
 ENV PATH="/firmware/.venv/bin:$PATH"
+
+# Pre-download faster-whisper model
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8')"
 
 WORKDIR  /firmware/src
