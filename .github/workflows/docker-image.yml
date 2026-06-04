@@ -2,7 +2,7 @@ name: Build Docker Image for Raspberry Pi
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "env_modernization"]
 
 jobs:
   build:
