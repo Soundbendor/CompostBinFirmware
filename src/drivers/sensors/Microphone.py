@@ -32,7 +32,7 @@ class Microphone:
         self.record_duration = record_duration
         self.alsaSoundCardNum = 0
 
-        self.pAudio = pyaudio.PyAudio()
+        self.pAudio = None
 
         # Enable the microphone capture
         with open(os.devnull, "wb") as devnull:
@@ -63,6 +63,7 @@ class Microphone:
 
     def initialize(self):
         logging.info("Microphone initialized!")
+        self.pAudio = pyaudio.PyAudio()
         self.initialized = True
 
     """
@@ -74,12 +75,13 @@ class Microphone:
 
     def writeWave(self, data, outputFile):
         # Write the pre downsampled audio to .wav file
-        wf = wave.open(outputFile, "wb")
-        wf.setnchannels(self.channels)
-        wf.setsampwidth(self.pAudio.get_sample_size(self.format))
-        wf.setframerate(self.sampling_rate)
-        wf.writeframes(b"".join(data))
-        wf.close()
+        if self.pAudio:
+            wf = wave.open(outputFile, "wb")
+            wf.setnchannels(self.channels)
+            wf.setsampwidth(self.pAudio.get_sample_size(self.format))
+            wf.setframerate(self.sampling_rate)
+            wf.writeframes(b"".join(data))
+            wf.close()
 
     """
     Record audio from the microphone and write it to a file
@@ -143,5 +145,6 @@ class Microphone:
     """
 
     def kill(self):
-        self.pAudio.terminate()
+        if self.pAudio:
+            self.pAudio.terminate()
 

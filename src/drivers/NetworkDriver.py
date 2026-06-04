@@ -421,9 +421,10 @@ class BluetoothDriver(DriverBase):
     Start the Bluetooth server
     """
     def startServer(self):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.setupBus())
-        loop.run_until_complete(self.controlLoop())
+        async def run_server():
+            await self.setupBus()
+            await self.controlLoop()
+        asyncio.run(run_server())
 
     def initialize(self):
         self.wifiService = self.WiFiSetupSerivce()

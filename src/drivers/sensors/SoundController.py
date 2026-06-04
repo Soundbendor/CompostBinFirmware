@@ -57,6 +57,7 @@ class SoundController(DriverBase):
     def initialize(self):
         self.muteMic()
         self.muteSpeaker()
+        self.speaker.initialize()
         self.microphone.initialize()
         self.initialized = True
         self.data["initialized"].value = 1
