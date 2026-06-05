@@ -67,7 +67,7 @@ WORKDIR /firmware
 # Compile whisper
 COPY whisper.cpp /firmware/whisper.cpp
 WORKDIR /firmware/whisper.cpp
-RUN make
+RUN UNAME_M=arm64 UNAME_p=arm make
 RUN ./models/download-ggml-model.sh small.en
 WORKDIR /firmware
 
