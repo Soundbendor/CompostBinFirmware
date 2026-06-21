@@ -1,0 +1,29 @@
+version: '2.2'
+volumes:
+  firmware-data:
+
+services:
+  balena-deploy:
+    image: aidanb1409/compostsense_firmware:latest
+    privileged: true
+    tty: true
+    network_mode: host
+    restart: always
+    command: ["python", "main.py"]
+
+    labels:
+      io.balena.features.dbus: '1'
+
+    environment:
+      - UDEV=on
+
+    volumes:
+      - 'firmware-data:/firmware/data'
+
+    devices:
+      - '/dev/i2c-1:/dev/i2c-1'
+      - '/dev/spidev0.0:/dev/spidev0.0'
+    
+    device_cgroup_rules:
+      - 'c 81:* rmw'
+      - 'c 189:* rmw'
