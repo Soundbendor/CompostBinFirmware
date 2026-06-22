@@ -84,4 +84,6 @@ ENTRYPOINT []
 
 ENV PATH="/firmware/.venv/bin:$PATH"
 
+LABEL io.balena.contract.requires="[]"
+
 WORKDIR  /firmware/src
