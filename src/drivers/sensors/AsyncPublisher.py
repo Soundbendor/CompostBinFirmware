@@ -1,7 +1,7 @@
 """
 Will Richards, Oregon State University, 2024
 
-Handles the asynchronous trascription of audio data and the subsequent API request 
+Handles the asynchronous trascription of audio data and the subsequent API request
 """
 
 import json
@@ -24,9 +24,8 @@ class AsyncPublisher(DriverBase):
     :param dataQueue: A queue of tuples of (fileNameDict, dataPacketDict)
     """
 
-    def __init__(self, dataQueue: Queue, commitID: str):
+    def __init__(self, dataQueue: Queue):
         super().__init__("AsyncPublisher")
-        self.commitID = commitID
         self.requests = RequestHandler()
         self.transcriber = AudioTranscriber()
         self.dataQueue = dataQueue
@@ -47,7 +46,6 @@ class AsyncPublisher(DriverBase):
         # Load data that was still waiting to be transmitted last round
         if os.path.exists("../data/cachedData.dat"):
             with open("../data/cachedData.dat", "r+") as file:
-
                 # Handle JSON files that are malformed and just write and empty dictionary so they are good to go for next time
                 try:
                     loadedData = json.load(file)
@@ -82,20 +80,19 @@ class AsyncPublisher(DriverBase):
 
             # If we think we have internet access attempt to transmit the data
             if self.isConnected:
-
                 # Check if the data collection was triggered by the user or the 2 hour
                 if bool(data["DriverManager"]["data"]["userTrigger"]) == True:
                     self.lastTranscription = self.transcriber.transcribe(
                         fileNames["voiceRecording"]
                     )
 
-                data["SoundController"]["data"][
-                    "TranscribedText"
-                ] = self.lastTranscription
+                data["SoundController"]["data"]["TranscribedText"] = (
+                    self.lastTranscription
+                )
 
                 # If our request succeeded  we don't need the files on device anymore
                 requestSuccess, responseCode, responseStr = (
-                    self.requests.sendAPIRequest(fileNames, data, self.commitID)
+                    self.requests.sendAPIRequest(fileNames, data)
                 )
                 if requestSuccess:
                     # Delete the transmitted files
@@ -118,7 +115,6 @@ class AsyncPublisher(DriverBase):
                         sleep(2)
                         self.data["LEDDriver"]["events"]["NONE"][0].set()
                 else:
-
                     # Determine what part of the upload failed and then if so send and email to alert the support team, we only want to send one email per error
                     if not requestSuccess and responseCode != self.lastResponseCode:
                         self.requests.sendErrorEmail(responseCode, responseStr)
@@ -152,4 +148,3 @@ class AsyncPublisher(DriverBase):
                 self.dataQueue.put((uid, fileNames, data, True))
                 self.isConnected = self.requests.sendHeartbeat()
                 sleep(1)
-

@@ -223,7 +223,7 @@ class RequestHandler:
             logging.error("Failed to recieive heartbeat from server!")
             return False
 
-    def sendAPIRequest(self, fileNames: dict, data: dict, commitID: str):
+    def sendAPIRequest(self, fileNames: dict, data: dict):
         endpoint = self.endpoint + "/api/scan"
 
         # Get current timestamp
@@ -252,7 +252,6 @@ class RequestHandler:
             "transcription": str(data["SoundController"]["data"]["TranscribedText"]),
             "userTrigger": bool(data["DriverManager"]["data"]["userTrigger"]),
             "deviceID": str(self.serial),
-            "commitID": commitID,
         }
         data = {"data": json.dumps(payload)}
 
@@ -303,12 +302,11 @@ class RequestHandler:
 
         try:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp_server:
-                
-                    smtp_server.login(self.emailAddress, self.appPassword)
-                    smtp_server.sendmail(
-                        self.emailAddress, self.emailAddress, msg.as_string()
-                    )
-                    return True
+                smtp_server.login(self.emailAddress, self.appPassword)
+                smtp_server.sendmail(
+                    self.emailAddress, self.emailAddress, msg.as_string()
+                )
+                return True
         except Exception as e:
             logging.error("Error occurred sending email: {e}")
             return False

@@ -40,13 +40,6 @@ class MainController:
         if not os.path.exists("../data/"):
             os.mkdir("../data/")
 
-        # Read in current commit number from git file
-        # NOTE: This for sure feels like some security vulnerablity like lfi or something but idc
-        with open("/firmware/.git/HEAD", "r") as HEADFile:
-            refPath = HEADFile.read().split(" ")[1].strip()
-            with open(f"/firmware/.git/{refPath}", "r") as commitIDFile:
-                self.commitID = commitIDFile.read().strip()
-
         # Create pipes to all proccesses that create files so we can retrieve the file name that they save the most recent data as
         self.soundControllerConnection, soundControllerConnection = Pipe()
         self.realsenseControllerConenction, realsenseControllerConenction = Pipe()
@@ -71,7 +64,7 @@ class MainController:
             LidSwitch(),
             RealsenseCam(realsenseControllerConenction),
             SoundController(soundControllerConnection, self.isMuted),
-            AsyncPublisher(self.publisherQueue, self.commitID),
+            AsyncPublisher(self.publisherQueue),
             BluetoothDriver(self.isMuted),
         )
 
