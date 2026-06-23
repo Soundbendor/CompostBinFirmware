@@ -149,5 +149,3 @@ typing-extensions
     # via
     #   adafruit-circuitpython-typing
     #   torch
-boto3
-aws_secretsmanager_caching

@@ -115,11 +115,10 @@ class AsyncPublisher(DriverBase):
                         sleep(2)
                         self.data["LEDDriver"]["events"]["NONE"][0].set()
                 else:
-                    # Determine what part of the upload failed and then if so send and email to alert the support team, we only want to send one email per error
+                    # Determine what part of the upload failed and then if so log it
                     if not requestSuccess and responseCode != self.lastResponseCode:
-                        self.requests.sendErrorEmail(responseCode, responseStr)
                         logging.warn(
-                            "Unsuccessful upload request and email has been sent to the support server"
+                            "Unsuccessful upload request"
                         )
 
                     # We failed to upload so we want to flash red on and offf

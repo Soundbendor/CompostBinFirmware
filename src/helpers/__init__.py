@@ -1,18 +1,13 @@
 import json
 import logging
 import os
-import smtplib
 import socket
 import sys
 import uuid
 from csv import excel_tab
-from email.mime.text import MIMEText
 from time import time
 
-import botocore
 import httpx
-from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
-from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 
 TWO_HOURS_SECONDS = 7200
@@ -111,13 +106,6 @@ class RequestHandler:
         self.secret_file = secret_file
         self.dataDir = dataDir
         self.apiKey, self.endpoint, self.port = self.loadFastAPICredentials(secret_file)
-        self.appPassword, self.emailAddress = self.loadEmailCredentials()
-
-        # Check if the app password is equal to FAILED then we know it didn't get the email credentials and should retry when we have a network connection
-        if self.appPassword == "FAILED":
-            self.gotEmailCreds = False
-        else:
-            self.gotEmailCreds = True
 
         self.endpoint = f"https://{self.endpoint}:{self.port}"
         self.serial = self._getSerial()
@@ -171,16 +159,6 @@ class RequestHandler:
 
         if "is_alive" in response and response["is_alive"] == True:
             logging.info("Succsessfully recieved hearbeat!")
-
-            # If we weren't able to get the email creds last time now that we for sure have network we should try again
-            if not self.gotEmailCreds:
-                self.appPassword, self.emailAddress = self.loadEmailCredentials()
-
-                # Check if the app password is equal to FAILED then we know it didn't get the email credentials and should retry when we have a network connection
-                if self.appPassword == "FAILED":
-                    self.gotEmailCreds = False
-                else:
-                    self.gotEmailCreds = True
 
             return True
         else:
@@ -285,33 +263,6 @@ class RequestHandler:
                 return (False, response.status_code, response.text)
 
     """
-    Sends an email to our support server when an error occurs when attempting to upload a packer
-
-    :param error_code: The code that was returned from the request
-    :param error_message: The exception or the error that was returned by the request
-    """
-
-    def sendErrorEmail(self, error_code, error_message):
-        subject = f"[Bucket Upload Error] Device: {self.serial} encountered a {error_code} error code."
-        body = f"The following was returned as the error in question:\t{error_message}"
-
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = self.emailAddress
-        msg["To"] = self.emailAddress
-
-        try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp_server:
-                smtp_server.login(self.emailAddress, self.appPassword)
-                smtp_server.sendmail(
-                    self.emailAddress, self.emailAddress, msg.as_string()
-                )
-                return True
-        except Exception as e:
-            logging.error("Error occurred sending email: {e}")
-            return False
-
-    """
     Load and return our Fast API credentials
 
     :param file: The file our credentials are stored in
@@ -326,34 +277,6 @@ class RequestHandler:
             credsJson["FASTAPI_CREDS"]["endpoint"],
             credsJson["FASTAPI_CREDS"]["port"],
         )
-
-    """
-    Load a Gmail app password from a file
-
-    :param file: The file the credentials are stored in
-    """
-
-    def loadEmailCredentials(self):
-        try:
-            client = botocore.session.get_session().create_client(
-                "secretsmanager", region_name="us-west-2"
-            )
-            cache_config = SecretCacheConfig()
-            cache = SecretCache(config=cache_config, client=client)
-            email = cache.get_secret_string("sb_notification_email")
-            pword = cache.get_secret_string("sb_notification_password")
-            return pword, email
-        except Exception as e:
-            logging.error(f"Failed to retrieve email credentials: {e}")
-            return "FAILED", "FAILED"
-
-        # secretFile = open(file, "r")
-        # credsJson = json.load(secretFile)
-        # secretFile.close()
-        # return (
-        #     credsJson["EMAIL_LOGGING"]["appCode"],
-        #     credsJson["EMAIL_LOGGING"]["email"],
-        # )
 
     """
     Get the serial number of this specific raspberry Pi by querying /proc/cpuinfo
