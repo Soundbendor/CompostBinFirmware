@@ -326,23 +326,14 @@ class BluetoothDriver(DriverBase):
                 print(f"An error occurred: {e}")
                 return False
            
-            # Formulate new FastAPI credentials based on the incoming data
-            creds = {
-                "FASTAPI_CREDS": {
-                    "apiKey": data["apiKey"],
-                    "endpoint": data["endpoint"],
-                    "port": int(data["port"]),
-                }
-            }
-
-            jsonString = json.dumps(creds)
-            # Write the new credentials to the config.secret file
-            with open("config.secret", "w") as file:
-                file.write(jsonString)
+            # Set the new credentials as environment variables
+            os.environ["FASTAPI_KEY"] = data["apiKey"]
+            os.environ["ENDPOINT"] = data["endpoint"]
+            os.environ["PORT"] = str(data["port"])
 
             # Then have the requests library update the credentials currently loaded into the system
             self.requests.updateAPICreds()
-            print("Written to file and updated credentials!")
+            print("Updated environment variables and credentials!")
 
         @characteristic("ABC2", CharFlags.READ)
         def getAPIKey(self, options):

@@ -102,12 +102,9 @@ Handles requests to remote APIs (S3 and FastAPI)
 
 
 class RequestHandler:
-    def __init__(self, dataDir="../data", secret_file="config.secret"):
-        self.secret_file = secret_file
+    def __init__(self, dataDir="../data"):
         self.dataDir = dataDir
-        self.apiKey, self.endpoint, self.port = self.loadFastAPICredentials(secret_file)
-
-        self.endpoint = f"https://{self.endpoint}:{self.port}"
+        self.updateAPICreds()
         self.serial = self._getSerial()
 
         logging.basicConfig(
@@ -170,10 +167,10 @@ class RequestHandler:
     """
 
     def updateAPICreds(self):
-        self.apiKey, self.endpoint, self.port = self.loadFastAPICredentials(
-            self.secret_file
-        )
-        self.endpoint = f"https://{self.endpoint}:{self.port}"
+        self.apiKey = os.getenv("FASTAPI_KEY")
+        endpoint = os.getenv("ENDPOINT")
+        self.port = os.getenv("PORT")
+        self.endpoint = f"https://{endpoint}:{self.port}"
 
     """
     Send a secure heartbeat request to the API
@@ -261,22 +258,6 @@ class RequestHandler:
             else:
                 logging.error("Failed to upload data to API.")
                 return (False, response.status_code, response.text)
-
-    """
-    Load and return our Fast API credentials
-
-    :param file: The file our credentials are stored in
-    """
-
-    def loadFastAPICredentials(self, file):
-        secretFile = open(file, "r")
-        credsJson = json.load(secretFile)
-        secretFile.close()
-        return (
-            credsJson["FASTAPI_CREDS"]["apiKey"],
-            credsJson["FASTAPI_CREDS"]["endpoint"],
-            credsJson["FASTAPI_CREDS"]["port"],
-        )
 
     """
     Get the serial number of this specific raspberry Pi by querying /proc/cpuinfo

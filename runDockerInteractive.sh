@@ -3,7 +3,9 @@
 docker run --rm --privileged \
     -v "$(pwd)"/data:/firmware/data \
     -v /dev/bus/usb:/dev/bus/usb \
-    -v "$(pwd)"/src/config.secret:/firmware/src/config.secret \
+    -e FASTAPI_KEY="$FASTAPI_KEY" \
+    -e ENDPOINT="$ENDPOINT" \
+    -e PORT="$PORT" \
     -v "$(pwd)"/.git:/firmware/.git \
     --mount type=bind,source=/var/run/dbus,target=/var/run/dbus \
     --device-cgroup-rule "c 81:* rmw" \

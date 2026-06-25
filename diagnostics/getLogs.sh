@@ -7,7 +7,7 @@ name='binsight-firmware'
 server='sb-binsight.dri.oregonstate.edu:30080'
 
 getAPIKey() {
-  apiKey=$(cat ~/food-detection-embedded/src/config.secret | python -c "import sys, json; print(json.load(sys.stdin)['FASTAPI_CREDS']['apiKey'])")
+  apiKey="${FASTAPI_KEY}"
 }
 
 getSerialNumber() {
