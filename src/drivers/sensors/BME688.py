@@ -33,8 +33,7 @@ class BME688(DriverBase):
         self.parallel_mode = bme_cnst.BME68X_PARALLEL_MODE
         self.temp_prof = [320, 100, 100, 100, 200, 200, 200, 320, 320, 320]
         self.dur_prof = [5, 2, 10, 30, 5, 5, 5, 5, 5, 5]
-        # TODO: Determine
-        self.calibration_file = "conf/bme688_state.txt"
+        self.calibration_file = "bme688_state.txt"
         self.events = {"CALIBRATE": Event(), "STOP_CALIBRATION": Event()}
 
         # Threading and calibration state
@@ -212,9 +211,7 @@ class BME688(DriverBase):
                 with self.sensor_lock:
                     state = self.sensor.get_bsec_state()
                     # Saving state to file
-                    state_path = (
-                        Path(__file__).resolve().parent.joinpath(self.calibration_file)
-                    )
+                    state_path = self._get_state_path(self.calibration_file)
                     state_path.parent.mkdir(parents=True, exist_ok=True)
                     with open(state_path, "w") as f:
                         f.write(str(state))
@@ -242,17 +239,20 @@ class BME688(DriverBase):
     This calibration curve should be generated during bin calibration
     """
 
+    def _get_state_path(self, state_file_name: str) -> Path:
+        return Path("/firmware/data").joinpath(state_file_name)
+
     def _readState(self, state_file_name: str) -> list[int] | None:
-        state_path = Path(__file__).resolve().parent.joinpath("conf", state_file_name)
+        state_path = self._get_state_path(state_file_name)
 
         if state_path.is_file():
-            state_file = open(str(state_path), "r")
-            # strip the brackets [.....]
-            state_str = state_file.read()[1:-1]
-            # split on delimiter ,
-            state_list = state_str.split(",")
-            state_int = [int(x) for x in state_list]
-            return state_int
+            with open(str(state_path), "r") as state_file:
+                # strip the brackets [.....]
+                state_str = state_file.read()[1:-1]
+                # split on delimiter ,
+                state_list = state_str.split(",")
+                state_int = [int(x) for x in state_list]
+                return state_int
         else:
             # Failed to load calibration curve
             return None

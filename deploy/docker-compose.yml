@@ -24,7 +24,3 @@ services:
     devices:
       - '/dev/i2c-1:/dev/i2c-1'
       - '/dev/spidev0.0:/dev/spidev0.0'
-    
-    device_cgroup_rules:
-      - 'c 81:* rmw'
-      - 'c 189:* rmw'
