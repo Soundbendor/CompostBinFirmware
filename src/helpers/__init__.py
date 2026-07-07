@@ -227,6 +227,7 @@ class RequestHandler:
             "transcription": str(data["SoundController"]["data"]["TranscribedText"]),
             "userTrigger": bool(data["DriverManager"]["data"]["userTrigger"]),
             "deviceID": str(self.serial),
+            "commitID": None,
         }
         data = {"data": json.dumps(payload)}
 
