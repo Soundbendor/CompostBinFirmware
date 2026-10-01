@@ -151,3 +151,5 @@ typing-extensions==4.15.0
     # via
     #   adafruit-circuitpython-typing
     #   torch
+faster-whisper==1.2.1
+av==17.0.1

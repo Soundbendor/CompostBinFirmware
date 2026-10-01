@@ -21,6 +21,47 @@ Then, plug the Jetson Nano back in, wait 30 seconds, and the device should autom
 
 ### Development
 
+#### Audio transcription on Raspberry Pi
+
+The current Docker image uses faster-whisper on the CPU with INT8 computation.
+The image packages `Systran/faster-whisper-small.en` at revision
+`d1d751a5f8271d482d14ca55d9e2deeebbae577f`; the model is loaded from disk and
+is never downloaded at runtime. The native model is created inside the publisher
+process so Python 3.14's `forkserver` startup can serialize the driver safely.
+
+`WHISPER_MODEL_PATH` defaults to `/firmware/models/faster-whisper-small.en`.
+For development outside Docker, point it at an existing CTranslate2 model
+directory containing the model, configuration, tokenizer, and vocabulary files.
+`WHISPER_CPU_THREADS` defaults to `2` to leave CPU capacity for sensor processes.
+
+Transcription failures retain the scan and media, requeue the scan, and wait one
+second before trying the next queued item. The worker retries model loading if
+startup failed. Media is deleted only after the API acknowledges the upload.
+An unreadable recording remains queued until it can be processed; it is not
+silently uploaded with a missing or stale transcription.
+
+Dependency versions in `pyproject.toml` and `uv.lock` control the Docker build.
+The historical requirements files are retained for existing development setups.
+The whisper.cpp source, executable, and GGML model are no longer used or packaged.
+
+Run the hardware-independent transcription tests from `src` in an environment
+with the project's `httpx` dependency installed:
+
+```bash
+python -m unittest discover -s tests/unit -p test_transcription.py -v
+```
+
+The Docker publication workflow runs these tests before building the image.
+The image build also decodes a synthetic WAV on the target architecture, without
+loading a speech model. PyAV is pinned to `17.0.1` because faster-whisper `1.2.1`
+uses an audio-decoder argument removed in PyAV `19`.
+
+Before promoting this image to devices, verify an ARM64 build, startup with
+networking disabled, and transcription of representative speech, silence, and
+invalid recordings on a Pi. Check latency and memory use while sensors are active.
+Rollback uses the previous firmware image; the scan schema and disk cache format
+are unchanged, and the packaged model is outside the persistent data volume.
+
 #### Run Detection Loop
 ```bash
 ./src/main.py

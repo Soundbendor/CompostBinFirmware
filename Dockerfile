@@ -55,6 +55,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --no-install-project
 
+# Exercise the native decoder on the target architecture before packaging models.
+COPY src/tests/smoke/test_audio_decoder.py /tmp/test_audio_decoder.py
+RUN /firmware/.venv/bin/python3 /tmp/test_audio_decoder.py
+
 # hotfix patch - keep lgpio 
 RUN uv pip install rpi-lgpio 
 
@@ -64,12 +68,10 @@ WORKDIR /firmware/bme68x-python-library-bsec2.6.1.0
 RUN BSEC2=64; export BSEC2; /firmware/.venv/bin/python3 setup.py install
 WORKDIR /firmware
 
-# Compile whisper
-COPY whisper.cpp /firmware/whisper.cpp
-WORKDIR /firmware/whisper.cpp
-RUN UNAME_M=arm64 UNAME_p=arm make
-RUN ./models/download-ggml-model.sh small.en
-WORKDIR /firmware
+# Package a fixed model snapshot. Runtime transcription never downloads models.
+ARG WHISPER_MODEL_REVISION=d1d751a5f8271d482d14ca55d9e2deeebbae577f
+ENV WHISPER_MODEL_PATH=/firmware/models/faster-whisper-small.en
+RUN /firmware/.venv/bin/python3 -c "import os; from huggingface_hub import snapshot_download; snapshot_download(repo_id='Systran/faster-whisper-small.en', revision=os.environ['WHISPER_MODEL_REVISION'], local_dir=os.environ['WHISPER_MODEL_PATH'], allow_patterns=['config.json', 'model.bin', 'tokenizer.json', 'vocabulary.*'])"
 
 # RUN mv /firmware/dependencies/librealsense2.so /usr/local/lib/python3.14/site-packages/librealsense2.so
 # RUN mv /firmware/dependencies/pyrealsense2.cpython-314-aarch64-linux-gnu.so /usr/local/lib/python3.14/site-packages/pyrealsense2.cpython-314-aarch64-linux-gnu.so

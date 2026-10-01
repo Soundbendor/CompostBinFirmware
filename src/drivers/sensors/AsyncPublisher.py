@@ -27,7 +27,9 @@ class AsyncPublisher(DriverBase):
     def __init__(self, dataQueue: Queue):
         super().__init__("AsyncPublisher")
         self.requests = RequestHandler()
-        self.transcriber = AudioTranscriber()
+        # Native model objects cannot be pickled for Python 3.14's forkserver.
+        # Load the model after ThreadedDriver starts this driver's process.
+        self.transcriber = None
         self.dataQueue = dataQueue
         self.lastTranscription = ""
         self.isConnected = True
@@ -41,8 +43,6 @@ class AsyncPublisher(DriverBase):
     """
 
     def initialize(self):
-        self.data[self.moduleName]["data"]["initialized"].value = 1
-
         # Load data that was still waiting to be transmitted last round
         if os.path.exists("../data/cachedData.dat"):
             with open("../data/cachedData.dat", "r+") as file:
@@ -66,6 +66,17 @@ class AsyncPublisher(DriverBase):
                         )
                     )
 
+        try:
+            self._initialize_transcriber()
+        except Exception:
+            # Keep the worker alive; a later scan can retry model initialization.
+            logging.exception("Unable to initialize the transcription model")
+
+    def _initialize_transcriber(self):
+        if self.transcriber is None:
+            self.transcriber = AudioTranscriber()
+        self.data[self.moduleName]["data"]["initialized"].value = 1
+
     def measure(self) -> None:
         if not self.dataQueue.empty():
             # Get the uid for this packet, the file names associated with it and the data itself
@@ -82,9 +93,16 @@ class AsyncPublisher(DriverBase):
             if self.isConnected:
                 # Check if the data collection was triggered by the user or the 2 hour
                 if bool(data["DriverManager"]["data"]["userTrigger"]) == True:
-                    self.lastTranscription = self.transcriber.transcribe(
-                        fileNames["voiceRecording"]
-                    )
+                    try:
+                        self._initialize_transcriber()
+                        self.lastTranscription = self.transcriber.transcribe(
+                            fileNames["voiceRecording"]
+                        )
+                    except Exception:
+                        logging.exception("Transcription failed; retaining scan for retry")
+                        self.dataQueue.put((uid, fileNames, data, True))
+                        sleep(1)
+                        return
 
                 data["SoundController"]["data"]["TranscribedText"] = (
                     self.lastTranscription

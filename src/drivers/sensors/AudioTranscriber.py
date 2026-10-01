@@ -1,31 +1,43 @@
-"""
-Will Richards, Oregon State University, 2024
+"""Local, CPU-only transcription of recorded audio using faster-whisper."""
 
-Abstraction layer for automated speech recognition (ASR) of recorded audio
-"""
-import subprocess
 import logging
-from time import time
+import os
+from pathlib import Path
+from time import monotonic
 
-class AudioTranscriber():
-    def __init__(self, model="small.en"):
-        self.modelPath = f"../whisper.cpp/models/ggml-{model}.bin"
 
-    def transcribe(self, inputFile: str):
-        start_time = time()
-        full_command = f"../whisper.cpp/main -m {self.modelPath} -f {inputFile} -np -nt"
-        process = subprocess.Popen(full_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # Get the output and error (if any)
-        output, error = process.communicate()
+class AudioTranscriber:
+    def __init__(self, model_path: str | None = None):
+        model_dir = Path(
+            model_path
+            or os.environ.get(
+                "WHISPER_MODEL_PATH", "/firmware/models/faster-whisper-small.en"
+            )
+        )
+        if not model_dir.is_dir():
+            raise FileNotFoundError(f"Packaged transcription model is missing: {model_dir}")
+        # faster-whisper otherwise tries to fetch a tokenizer from the Hub when
+        # tokenizer.json is absent, even when the model itself is a local path.
+        for filename in ("model.bin", "config.json", "tokenizer.json"):
+            if not (model_dir / filename).is_file():
+                raise FileNotFoundError(f"Packaged transcription file is missing: {filename}")
 
-        if error:
-            logging.error(f"Error proccessing audio: {error.decode('utf-8')}")
+        # Import and load native objects only in the publisher's child process.
+        from faster_whisper import WhisperModel
 
-        # Process and return the output string
-        decoded_str = output.decode('utf-8').strip()
-        processed_str = decoded_str.replace('[BLANK_AUDIO]', '').strip()
-        end_time = time()
-        logging.info(f"Transcription took: {end_time - start_time} seconds")
+        self.model = WhisperModel(
+            str(model_dir),
+            device="cpu",
+            compute_type="int8",
+            cpu_threads=int(os.environ.get("WHISPER_CPU_THREADS", "2")),
+            local_files_only=True,
+        )
 
-        return processed_str
-        
+    def transcribe(self, inputFile: str) -> str:
+        start_time = monotonic()
+        segments, _ = self.model.transcribe(inputFile, language="en", beam_size=5)
+        # Inference happens while consuming this generator. Let the publisher
+        # handle failures from both the call above and iteration below.
+        transcription = "".join(segment.text for segment in segments).strip()
+        logging.info("Transcription took %.2f seconds", monotonic() - start_time)
+        return transcription
