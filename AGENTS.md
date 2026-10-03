@@ -51,6 +51,13 @@ Do not run hardware scripts, publish an image, mutate Balena, change production 
 - Use the pull-request checklist in `.github/pull_request_template.md`, even when no pull request is created, as the definition of a complete change.
 - Record durable architectural decisions under `docs/adr/`; keep this file short and operational.
 
+## Task-specific skills
+
+For local openBalena setup, Livepush, or debugging a locally connected
+balenaOS device, read
+[openbalena-local-dev](.agents/skills/openbalena-local-dev/SKILL.md).
+Load it only when relevant; keep detailed procedures in the skill.
+
 ## Reference documentation
 
 - [Architecture](docs/architecture.md)
