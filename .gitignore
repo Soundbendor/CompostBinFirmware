@@ -17,3 +17,6 @@ Authentication_details.txt
 *.ply
 *.secret
 lastUpdate.txt
+
+# Machine-local Balena development configuration
+/docker-compose.yaml

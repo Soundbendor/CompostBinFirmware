@@ -1,0 +1,40 @@
+# Local development only. This file is ignored by Git.
+# From this directory: balena push <PI_LAN_IP> --source .
+# Keep the push session open for Livepush updates.
+# Supply FASTAPI_KEY using --env; endpoint and port are configured below.
+# Local-mode data volumes are deleted when local mode is disabled.
+# Fleet releases continue to use deploy/docker-compose.yml.
+version: '2.2'
+
+volumes:
+  firmware-data:
+
+services:
+  balena-deploy:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      # Override FIRMWARE_BASE with a known-good ARM64 image digest here:
+      # args:
+      #   FIRMWARE_BASE: aidanb1409/compostsense_firmware@sha256:...
+    privileged: true
+    tty: true
+    network_mode: host
+    restart: always
+    command: ["/firmware/.venv/bin/python", "-u", "main.py"]
+
+    labels:
+      io.balena.features.dbus: '1'
+
+    environment:
+      UDEV: 'on'
+      DBUS_SYSTEM_BUS_ADDRESS: unix:path=/host/run/dbus/system_bus_socket
+      ENDPOINT: binapi.aidanbeery.com
+      PORT: '443'
+
+    volumes:
+      - 'firmware-data:/firmware/data'
+
+    devices:
+      - '/dev/i2c-1:/dev/i2c-1'
+      - '/dev/spidev0.0:/dev/spidev0.0'

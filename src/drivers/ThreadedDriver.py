@@ -4,10 +4,11 @@ Will Richards, Oregon State University, 2023
 Provides a genric wrapper for converting generic drivers into its own driver proccess.
 """
 
-from multiprocessing import Process
+from multiprocessing import Process, current_process
 from time import sleep
 
 from drivers.DriverBase import DriverBase
+from helpers import Logging
 
 class ThreadedDriver(Process):
 
@@ -27,6 +28,10 @@ class ThreadedDriver(Process):
     Overridden process runner so that we can initialize and use all our drivers the same because we know exactly how they will be have
     """
     def run(self) -> None:
+        # Configure real workers, but preserve the caller's handlers when run()
+        # is invoked directly for in-process use or tests.
+        if current_process() is self:
+            Logging(verbose=True)
         try:
             self.driver.initialize()
             while(self.isRunning):
@@ -45,4 +50,3 @@ class ThreadedDriver(Process):
     
     
         
-

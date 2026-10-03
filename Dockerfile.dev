@@ -1,0 +1,16 @@
+# Reuse the ARM64 dependencies and model from a previously published image.
+# Pin FIRMWARE_BASE to a digest matching the working branch when available.
+ARG FIRMWARE_BASE=aidanb1409/compostsense_firmware:latest
+FROM ${FIRMWARE_BASE}
+
+WORKDIR /firmware
+
+# Remove inherited files so source or assets deleted locally cannot linger.
+RUN rm -rf /firmware/src /firmware/media
+
+COPY media /firmware/media
+COPY src /firmware/src
+
+ENTRYPOINT []
+WORKDIR /firmware/src
+CMD ["/firmware/.venv/bin/python", "-u", "main.py"]

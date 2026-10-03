@@ -41,29 +41,28 @@ class Logging:
     """
     Configure logging format and output type based on arguments passed to the program
 
-    :param path: The current file path of the module creating our logging module
-    :param verbose: Determines wether or not we should be printing all of the info messages or just warning and higher
+    LOG_LEVEL overrides the default INFO or WARNING verbosity.
+    An optional first command-line argument enables file output as well.
+
+    :param verbose: Whether to include INFO messages by default.
     """
 
     def __init__(self, verbose=True):
-        FORMAT = "%(asctime)s [%(filename)s:%(funcName)s:%(lineno)d] [%(levelname)s] %(message)s"
+        level = os.getenv("LOG_LEVEL", "INFO" if verbose else "WARNING").upper()
+        handlers = [logging.StreamHandler(sys.stdout)]
+        if len(sys.argv) > 1:
+            handlers.append(logging.FileHandler(sys.argv[1]))
 
-        loggingLevel = logging.INFO
-        if not verbose:
-            loggingLevel = logging.WARNING
-
-        # Check if we want to specify an output file for the logging
-        if len(sys.argv) < 2:
-            logging.basicConfig(format=FORMAT, level=loggingLevel)
-            logging.info(
-                "No output file specified file logging will be disabled to enable: ./main.py <outputfilepath>"
-            )
-        else:
-            logging.basicConfig(
-                format=FORMAT,
-                level=logging.INFO,
-                handlers=[logging.FileHandler(sys.argv[1]), logging.StreamHandler()],
-            )
+        logging.basicConfig(
+            level=level,
+            format=(
+                "%(asctime)s [%(processName)s:%(process)d] "
+                "[%(filename)s:%(funcName)s:%(lineno)d] "
+                "[%(levelname)s] %(message)s"
+            ),
+            handlers=handlers,
+            force=True,
+        )
 
 
 """

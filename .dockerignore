@@ -1,1 +1,11 @@
 **/venv
+**/build/
+**/*.o
+**/.idea/
+
+# Workstation environments and caches are not part of the ARM64 build context.
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
