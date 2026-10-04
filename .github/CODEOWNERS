@@ -1,0 +1,11 @@
+# Default firmware ownership
+* @Aidan-B1409 @WL-Richards
+
+# Cross-repository and release-sensitive boundaries
+/src/helpers/ @Aidan-B1409 @WL-Richards
+/src/drivers/NetworkDriver.py @Aidan-B1409 @WL-Richards
+/docs/protocols/ @Aidan-B1409 @WL-Richards
+/Dockerfile @Aidan-B1409 @WL-Richards
+/deploy/ @Aidan-B1409 @WL-Richards
+/.github/workflows/ @Aidan-B1409 @WL-Richards
+
