@@ -1,0 +1,11 @@
+{
+  "Fixture Network": {
+    "strength": 75,
+    "security": "WPA2"
+  },
+  "Fixture Guest": {
+    "strength": 40,
+    "security": "Open"
+  }
+}
+

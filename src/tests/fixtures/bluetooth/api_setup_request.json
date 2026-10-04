@@ -1,0 +1,6 @@
+{
+  "apiKey": "fixture-api-key-not-secret",
+  "endpoint": "api.example.invalid",
+  "port": 443
+}
+

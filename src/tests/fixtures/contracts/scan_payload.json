@@ -1,0 +1,20 @@
+{
+  "colorImage": "colorImage_2026-01-02--03-04-05.jpg",
+  "depthImage": "depthImage_2026-01-02--03-04-05.jpg",
+  "heatmapImage": "heatmap_2026-01-02--03-04-05.jpg",
+  "topologyMap": "depth_2026-01-02--03-04-05.ply",
+  "voiceRecording": "downsampledAudio_2026-01-02--03-04-05.wav",
+  "total_weight": 1250.5,
+  "weight_delta": 42.25,
+  "temperature": 24.5,
+  "pressure": 101.325,
+  "humidity": 48.5,
+  "iaq": 37.0,
+  "co2_eq": 612.0,
+  "tvoc": 0.42,
+  "transcription": "fixture food description",
+  "userTrigger": true,
+  "deviceID": "fixture-device-0001",
+  "commitID": null
+}
+

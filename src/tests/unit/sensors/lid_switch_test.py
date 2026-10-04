@@ -17,7 +17,7 @@ def test_lid_closed_to_open_transition():
     driver.measure()
 
     assert driver.lidOpen is True
-    assert driver.data["Lid_State"].value is 1
+    assert driver.data["Lid_State"].value == 1
     assert driver.events["LID_OPENED"].is_set()
     assert not driver.events["LID_CLOSED"].is_set()
 
@@ -32,6 +32,6 @@ def test_lid_open_to_closed_transition():
     driver.measure()
 
     assert driver.lidOpen is False
-    assert driver.data["Lid_State"].value is 0
+    assert driver.data["Lid_State"].value == 0
     assert not driver.events["LID_OPENED"].is_set()
     assert driver.events["LID_CLOSED"].is_set()
