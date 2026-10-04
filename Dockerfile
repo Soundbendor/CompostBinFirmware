@@ -3,7 +3,6 @@ FROM ghcr.io/astral-sh/uv:python3.14-bookworm
 
 # Copy our code to the firmware directory
 WORKDIR /firmware
-COPY ./requirements_new.txt /firmware/requirements.txt
 COPY dependencies /firmware/dependencies
 
 # Update apt sources
@@ -43,9 +42,6 @@ RUN wget https://github.com/joan2937/lg/archive/master.zip \
     && cd .. \
     && rm -rf master.zip lg-master
 
-# Install python dependenices
-# RUN pip install -r requirements.txt --no-cache-dir --break-system-packages
-
 # Ensure installed tools can be executed out of the box
 ENV UV_TOOL_BIN_DIR=/usr/local/bin
 
@@ -78,8 +74,6 @@ RUN /firmware/.venv/bin/python3 -c "import os; from huggingface_hub import snaps
 
 COPY media /firmware/media
 COPY src /firmware/src
-
-COPY .aws /root/.aws
 
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
