@@ -3,6 +3,7 @@ Abstraction layer for the BME688 gas sensor
 """
 
 import logging
+import os
 import threading
 from time import time, sleep
 from pathlib import Path
@@ -34,6 +35,7 @@ class BME688(DriverBase):
         self.temp_prof = [320, 100, 100, 100, 200, 200, 200, 320, 320, 320]
         self.dur_prof = [5, 2, 10, 30, 5, 5, 5, 5, 5, 5]
         self.calibration_file = "bme688_state.txt"
+        self.debug_mode = self._readDebugMode()
         self.events = {"CALIBRATE": Event(), "STOP_CALIBRATION": Event()}
 
         # Threading and calibration state
@@ -47,14 +49,21 @@ class BME688(DriverBase):
         self.startTime = time()
 
     """
+    Read the BME688 extension's debug flag from
+    the environment. "1" enables debug output.
+    """
+
+    def _readDebugMode(self) -> int:
+        return 1 if os.environ.get("BME688_DEBUG_MODE") == "1" else 0
+
+    """
     Initialize the BME688 to begin taking sensor readings
     """
 
     def initialize(self):
         try:
             self.sensor_lock = threading.Lock()
-            # i2c_bus = 1 is standard for Raspberry Pi main I2C bus
-            self.sensor = BME68X(self.i2c_address, 1)
+            self.sensor = BME68X(self.i2c_address, self.debug_mode)
             # self.sensor.set_heatr_conf(
             #     self.heater_status, self.temp_prof, self.dur_prof, self.parallel_mode
             # )

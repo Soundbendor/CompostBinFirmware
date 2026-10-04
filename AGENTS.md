@@ -19,10 +19,16 @@ Before changing anything:
 - `make check` — validate the lock, Python syntax, shell syntax, repository metadata, and fixtures.
 - `make test` — run workstation unit tests. This currently reports the known missing pytest development dependency instead of silently collecting zero tests.
 - `make image` — build a local ARM64 image; it never pushes.
-- `make hil-list` — list manual hardware checks.
-- `HIL_APPROVED=1 HIL_TEST=<name> make hil` — run one approved hardware script. User approval and the matching hardware are still required.
+- `make hw-list` — list manual hardware checks.
+- `hw_APPROVED=1 hw_TEST=<name> make hw` — run one approved hardware script. User approval and the matching hardware are still required.
 
 Do not run hardware scripts, publish an image, mutate Balena, change production credentials, or call a live API unless the user explicitly authorizes that action.
+
+## Runtime environment variables
+
+- `BME688_DEBUG_MODE` — set to `1` only to reproduce BSEC library diagnostics. 
+- `WHISPER_MODEL_PATH` — packaged model snapshot; runtime transcription never downloads.
+- `WHISPER_CPU_THREADS` — see the development runbook before changing it.
 
 ## Repository boundaries
 
