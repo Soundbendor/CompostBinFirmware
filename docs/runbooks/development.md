@@ -56,6 +56,27 @@ make image
 
 Override the local-only tag with `IMAGE_TAG=name:tag`. The target does not log in or push. Building may require network downloads and ARM64 emulation; obtain approval before network access when the execution environment requires it.
 
+## Refresh the local development base image
+
+For an authorized push to a verified local-mode device, set `DEVICE_ADDR` to its LAN address or `.local` hostname and `SOURCE_DIR` to the firmware source root, then run:
+
+```bash
+balena push "$DEVICE_ADDR" --source "$SOURCE_DIR" --pull
+```
+
+Keep any required `--env` and `--registry-secrets` arguments, supplying credentials privately. This command builds and deploys the development service; it is not a read-only freshness check. Follow the [openBalena local development skill](../../.agents/skills/openbalena-local-dev/SKILL.md) for device setup and inspection.
+
+For local pushes, [`--pull`](https://docs.balena.io/reference/balena-cli/latest/#push) asks the device's build engine to pull the base image from the registry even when it is cached locally. The engine resolves the tag and reuses existing layers. Keep build caching and Livepush enabled; do not add `--nocache` or `--nolive` for this refresh. Base-image selection happens before Dockerfile instructions execute, so neither Dockerfile needs a refresh instruction.
+
+Freshness is established at push time. Livepush does not continuously watch the registry; start another push with `--pull` to refresh again. A digest-pinned `FIRMWARE_BASE` still selects that exact image. A successful refresh does not prove compatibility with the current source: the registry's `latest` must already contain the required dependencies and transcription model. This workflow adds no compatibility guard or automatic repair.
+
+During an authorized device validation:
+
+- Record the selected base image's ID and repository digest before and after the push, retaining the previous digest for rollback.
+- Confirm a stale tag updates, an unchanged tag reuses existing layers, and the resulting development image derives from the refreshed base.
+- Check pull errors when the registry is unavailable; report freshness as unverified if the pull fails.
+- Preserve the existing data volume. If rollback is needed, select the recorded previous base digest and rebuild/redeploy through the authorized local workflow; do not disable Local Mode or prune volumes.
+
 ## Fixtures
 
 Contract fixtures live in `src/tests/fixtures/`. They must:
@@ -75,4 +96,3 @@ Before handing work back:
 3. Report failures and skipped checks accurately.
 4. Name any affected external consumer, persistent file, hardware device, image, or fleet behavior.
 5. State rollout and rollback considerations for shared contracts or persisted data.
-

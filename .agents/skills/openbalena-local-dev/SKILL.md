@@ -24,10 +24,12 @@ Use one verified development device. Resolve its UUID, LAN address, service name
 7. Put non-secret runtime settings in development Compose. Supply secrets without displaying their values or committing them. Fleet application environment variables do not automatically carry into Local Mode. Keep machine-specific Compose files out of Git when local-only configuration is requested.
 
    ```bash
-   balena push "$DEVICE_ADDR" --source "$SOURCE_DIR"
+   balena push "$DEVICE_ADDR" --source "$SOURCE_DIR" --pull
    ```
 
-   Supply required `--env "NAME=$VALUE"` arguments from privately populated shell variables. Target a LAN address or `.local` hostname. Leave the session open for Livepush; avoid `--nocache` and `--nolive` during iteration. The first base-image pull can be slow. Dependency changes still require a suitable base rebuild.
+   Supply required `--env "NAME=$VALUE"` arguments from privately populated shell variables and preserve required `--registry-secrets` arguments. Target a LAN address or `.local` hostname. Leave the session open for Livepush; avoid `--nocache` and `--nolive` during iteration. The first base-image pull can be slow. Dependency changes still require a suitable base rebuild.
+
+   `--pull` refreshes base images from the registry at push time while retaining build caching. An active Livepush session does not watch the registry; start another push with `--pull` to refresh again. Digest-pinned bases remain pinned. The registry's latest image may still be incompatible with the source; refreshing does not validate dependencies or models. If the pull fails, report freshness as unverified. For before/after image checks and rollback guidance, see the [development runbook](../../../docs/runbooks/development.md#refresh-the-local-development-base-image).
 
 ## Inspect before changing state
 

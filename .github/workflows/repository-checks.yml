@@ -1,0 +1,33 @@
+name: Repository checks
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "env_modernization"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.8"
+          enable-cache: true
+
+      - name: Create check environment
+        run: uv venv --python "$(cat .python-version)"
+
+      - name: Run canonical repository checks
+        run: make check

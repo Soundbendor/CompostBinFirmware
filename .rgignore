@@ -1,0 +1,13 @@
+# Third-party source and large generated/native artifacts are excluded from
+# routine searches. Use `rg --no-ignore` for an explicitly scoped vendor audit.
+.venv/
+BSEC/
+bme68x-python-library-bsec2.6.1.0/
+whisper.cpp/
+dependencies/
+*.a
+*.bin
+*.o
+*.so
+*.so.*
+

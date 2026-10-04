@@ -1,23 +1,20 @@
 # Food Detection IoT 
 Intended to run on in home compost bins for the purpose of collect AI training data.
 
-## Production - Automatically run detections on bootup
+## Setup
 
-SSH or open up a terminal on the Jetson Nano and run the following commands:
+The firmware runs on Raspberry Pi 5 in a Balena container. See the
+[deployment runbook](docs/runbooks/deployment.md) for the deployment workflow.
 
-#### Setup:
+For workstation development, install the prerequisites in the
+[development runbook](docs/runbooks/development.md), then run from the repository root:
+
 ```bash
-git clone https://github.com/Soundbendor/food-detection-embedded.git
-cd food-detection-embedded
-git checkout nano-refactor
-./setup.sh
+make bootstrap
+make check
 ```
 
-<br>
-
-Exit the terminal, unplug the Jetson Nano, wait 10 seconds. <br>
-Then, plug the Jetson Nano back in, wait 30 seconds, and the device should automatically light up to detect foods!
-
+The legacy host setup script has been retired.
 
 ### Development
 
@@ -41,7 +38,7 @@ An unreadable recording remains queued until it can be processed; it is not
 silently uploaded with a missing or stale transcription.
 
 Dependency versions in `pyproject.toml` and `uv.lock` control the Docker build.
-The historical requirements files are retained for existing development setups.
+Workstation setup uses the same files through `make bootstrap`.
 The whisper.cpp source, executable, and GGML model are no longer used or packaged.
 
 Run the hardware-independent transcription tests from `src` in an environment
