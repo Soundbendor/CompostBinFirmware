@@ -31,7 +31,7 @@ check:
 
 test:
 	@test -x "$(PYTHON)" || { echo "$(PYTHON) is missing; run 'make bootstrap'."; exit 2; }
-	@$(PYTHON) -c 'import pytest' 2>/dev/null || { echo "pytest is not declared in the current project. Add the planned development dependency before treating unit tests as a passing gate."; exit 2; }
+	@$(PYTHON) -c 'import pytest' 2>/dev/null || { echo "pytest is missing. The dev dependency group is declared in pyproject.toml; run 'make bootstrap'."; exit 2; }
 	PYTHONPATH=src $(PYTHON) -m pytest -q src/tests/unit
 
 image:

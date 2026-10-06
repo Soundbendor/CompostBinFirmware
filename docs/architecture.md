@@ -39,6 +39,7 @@ The names `ThreadedDriver` and `proccessList` are historical: these workers are 
 | `AsyncPublisher` | Transcribes user-triggered audio, caches pending packets in `cachedData.dat`, uploads scans, and deletes acknowledged media. |
 | `WiFiManager` and `BluetoothDriver` | Call NetworkManager commands, advertise GATT services, accept setup values, and report connection state. |
 | `RequestHandler` | Builds the server URL, reads API credentials, creates the multipart request, and sends heartbeat/upload requests. |
+| `BalenaTagReporter` | Publishes the latest device tag value from a worker thread, retries failures with capped backoff, and never blocks the caller. |
 
 ## Scan flow
 
@@ -51,13 +52,31 @@ The names `ThreadedDriver` and `proccessList` are historical: these workers are 
 
 The exact external contract is documented in [the scan upload protocol](protocols/scan-upload.md).
 
+## BME688 calibration tag
+
+The BME688 process publishes one openBalena device tag, `BME688_CALIBRATED_STATE`, with the values `UNHEALTHY`, `CALIBRATING`, and `CALIBRATED`. The value is the latest reported state, not an event history and not a heartbeat.
+
+| Condition | Tag value |
+| --- | --- |
+| Sensor initialization fails | `UNHEALTHY` |
+| Sensor initializes without a valid saved calibration | `UNHEALTHY` |
+| Calibration is actively running | `CALIBRATING` |
+| Saved calibration loads and initialization completes | `CALIBRATED` |
+| Calibration completes and its state is saved | `CALIBRATED` |
+| Calibration fails or is stopped | `CALIBRATED` when a valid prior calibration remains, otherwise `UNHEALTHY` |
+
+Reporting runs on its own worker thread inside `BalenaTagReporter`, is created during BME688 `initialize()` rather than in the driver constructor, and never blocks measurement or calibration. Temporary measurement errors and openBalena connection failures leave the tag unchanged. Reporting is disabled with a single warning when configuration is missing. See [ADR 0002](adr/0002-bme688-calibration-device-tag.md).
+
+`MainController` still requests calibration when the driver reports no valid curve, and a run still completes only after at least 24 hours and IAQ accuracy 3.
+
 ## Runtime files and configuration
 
 - `/firmware/src` is the container working directory.
 - `/firmware/data` is the Balena persistent volume; source-relative code refers to it as `../data`.
 - `FASTAPI_KEY`, `ENDPOINT`, and `PORT` configure API access.
+- `BALENA_API_URL`, `BALENA_API_KEY`, and `BALENA_DEVICE_UUID` configure calibration tag reporting. All three must be present; otherwise reporting is disabled with one warning. `BALENA_API_KEY` is a secret and must be injected from the fleet, never committed. `BALENA_API_URL` accepts either a full API address or a bare host.
 - `CalibrationDetails.json` supplies the NAU7802 calibration factor.
-- `/firmware/data/bme688_state.txt` stores BME688/BSEC calibration state.
+- `/firmware/data/bme688_state.txt` stores BME688/BSEC calibration state. Completed calibrations are written to a temporary file in the same directory and moved into place atomically, so a failed write leaves the previous valid curve readable.
 - `/firmware/data/config.json` stores the muted preference.
 - `/firmware/data/cachedData.dat` stores the current offline queue.
 
@@ -68,7 +87,7 @@ Bluetooth writes API values to its own process environment. The persistence and 
 - `pyproject.toml` and `uv.lock` define the Python environment used by the current Docker build.
 - The Dockerfile separately builds the vendored BME68x package and `whisper.cpp`, downloads a speech model, and copies native RealSense artifacts with the application source.
 - `.github/workflows/docker-image.yml` cross-builds `linux/arm64` and publishes a Docker image.
-- `deploy/docker-compose.yml` runs that image with host networking, DBus, persistent storage, device mappings, and privileged access.
+- `deploy/docker-compose.yml` runs that image with host networking, DBus, the `balena-api` feature label, persistent storage, device mappings, and privileged access.
 - `deploy/balena.yml` contains separate application metadata.
 
 See [the deployment runbook](runbooks/deployment.md) before touching images or the fleet.
@@ -77,7 +96,9 @@ See [the deployment runbook](runbooks/deployment.md) before touching images or t
 
 Files under `src/tests/unit/` are intended to be workstation tests with fake dependencies. The other Python files under `src/tests/` are manual device scripts and may access hardware, NetworkManager, Bluetooth, audio, or a configured API.
 
-The current unit tests use pytest-style functions, but pytest is not declared in project dependencies. This is a known baseline limitation exposed by `make test`; it should not be hidden by using a test command that collects zero tests.
+The current unit tests use pytest-style functions, and pytest is declared as a development dependency. `make test` runs them with `src` on `PYTHONPATH`.
+
+`src/tests/unit/sensors/bme688_test.py` and `src/tests/unit/drivers/balena_tag_reporter_test.py` replace the native BSEC extension and the balena SDK with recording doubles, so no workstation test imports hardware or contacts a live API.
 
 ## Third-party and generated content
 

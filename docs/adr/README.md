@@ -17,4 +17,5 @@ Do not rewrite accepted history. Supersede an ADR with a new numbered record and
 ## Index
 
 - [0001 — Repository-owned development workflow](0001-repository-owned-development-workflow.md)
+- [0002 — Publish BME688 calibration state as a balena device tag](0002-bme688-calibration-device-tag.md)
 

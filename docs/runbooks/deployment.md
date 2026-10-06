@@ -12,6 +12,12 @@ This runbook documents the checked-in delivery path. It does not authorize publi
 
 These identifiers are not currently connected into an immutable promotion or rollback record. Treat the running fleet and image registry as external state that must be inspected before a deployment change.
 
+## openBalena API feature
+
+`deploy/docker-compose.yml` carries `io.balena.features.balena-api: '1'` so the balena API is reachable from the service. Calibration tag reporting additionally needs `BALENA_API_URL`, `BALENA_API_KEY`, and `BALENA_DEVICE_UUID` as service environment variables or fleet secrets. Without them, the firmware logs one warning at startup and keeps running; it never fails to initialize over missing reporting configuration.
+
+Ship the updated image and the label together. An image without the label cannot reach the API, and a label without a compatible image leaves the previously published tag value in place, which reads as a healthy device when it is not.
+
 ## Read-only preflight
 
 Before proposing a deployment change:

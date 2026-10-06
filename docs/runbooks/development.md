@@ -18,7 +18,7 @@ make bootstrap
 make check
 ```
 
-`make bootstrap` synchronizes `uv.lock`; it does not install an undeclared test framework. The current project therefore expects `make test` to stop with a clear pytest dependency message. This is a known baseline condition, not permission to install untracked tools or report zero collected tests as success.
+`make bootstrap` synchronizes `uv.lock`. It installs both the runtime environment and the `dev` dependency group, which declares pytest, so `make test` runs the suite once the environment is synchronized. If `make test` stops with its pytest dependency message, the environment is out of date; run `make bootstrap` rather than installing untracked tools or reporting zero collected tests as success.
 
 Use `make help` as the task index. Override `PYTHON` only when intentionally using an equivalent synchronized environment:
 
@@ -36,7 +36,9 @@ make PYTHON=/absolute/path/to/python check
 - required workflow/documentation file checks;
 - JSON parsing and contract-field checks for sanitized fixtures.
 
-`make test` is the sole test entry point. Once the development test dependencies are declared, it runs the pytest suite under `src/tests/unit` with `src` on `PYTHONPATH`.
+`make test` is the sole test entry point. It runs the pytest suite under `src/tests/unit` with `src` on `PYTHONPATH`.
+
+`src/tests/unit/sensors/bme688_test.py` and `src/tests/unit/drivers/balena_tag_reporter_test.py` stub the vendored BSEC extension and the balena SDK with recording doubles. They must stay offline: never point a workstation test at a live API, and never add a real API key to a test.
 
 ## Search boundaries
 
@@ -69,6 +71,8 @@ Keep any required `--env` and `--registry-secrets` arguments, supplying credenti
 For local pushes, [`--pull`](https://docs.balena.io/reference/balena-cli/latest/#push) asks the device's build engine to pull the base image from the registry even when it is cached locally. The engine resolves the tag and reuses existing layers. Keep build caching and Livepush enabled; do not add `--nocache` or `--nolive` for this refresh. Base-image selection happens before Dockerfile instructions execute, so neither Dockerfile needs a refresh instruction.
 
 Freshness is established at push time. Livepush does not continuously watch the registry; start another push with `--pull` to refresh again. A digest-pinned `FIRMWARE_BASE` still selects that exact image. A successful refresh does not prove compatibility with the current source: the registry's `latest` must already contain the required dependencies and transcription model. This workflow adds no compatibility guard or automatic repair.
+
+`Dockerfile.dev` inherits its Python environment from `FIRMWARE_BASE` and never runs `uv sync`, so a new runtime dependency is only present on the device after the base image that carries it is published and selected. Dependency changes therefore require a base-image rebuild before a local push can import them.
 
 During an authorized device validation:
 

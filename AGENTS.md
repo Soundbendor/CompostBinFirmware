@@ -17,7 +17,7 @@ Before changing anything:
 
 - `make bootstrap` — synchronize the locked runtime environment.
 - `make check` — validate the lock, Python syntax, shell syntax, repository metadata, and fixtures.
-- `make test` — run workstation unit tests. This currently reports the known missing pytest development dependency instead of silently collecting zero tests.
+- `make test` — run workstation unit tests.
 - `make image` — build a local ARM64 image; it never pushes.
 - `make hw-list` — list manual hardware checks.
 - `hw_APPROVED=1 hw_TEST=<name> make hw` — run one approved hardware script. User approval and the matching hardware are still required.
@@ -29,11 +29,13 @@ Do not run hardware scripts, publish an image, mutate Balena, change production 
 - `BME688_DEBUG_MODE` — set to `1` only to reproduce BSEC library diagnostics. 
 - `WHISPER_MODEL_PATH` — packaged model snapshot; runtime transcription never downloads.
 - `WHISPER_CPU_THREADS` — see the development runbook before changing it.
+- `BALENA_API_URL`, `BALENA_API_KEY`, `BALENA_DEVICE_UUID` — fleet-injected configuration for the `BME688_CALIBRATED_STATE` device tag. `BALENA_API_KEY` is a secret. When any of the three is absent the firmware logs one warning and continues with reporting disabled.
 
 ## Repository boundaries
 
 - `src/main.py` and `src/drivers/MainController.py` own orchestration.
 - `src/drivers/` owns process management, networking, Bluetooth, and hardware adapters.
+- `src/drivers/BalenaTagReporter.py` owns the openBalena device-tag worker; see [ADR 0002](docs/adr/0002-bme688-calibration-device-tag.md).
 - `src/helpers/__init__.py` owns current HTTP, logging, timing, and calibration helpers.
 - `src/tests/unit/` contains workstation tests; other files under `src/tests/` are manual hardware scripts.
 - `deploy/`, `Dockerfile`, and `.github/workflows/` jointly define packaging and delivery.
